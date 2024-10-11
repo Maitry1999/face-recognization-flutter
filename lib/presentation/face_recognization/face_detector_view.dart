@@ -45,7 +45,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   bool _isBusy = false;
   CustomPaint? _customPaint;
   String? _text;
-  var _cameraLensDirection = CameraLensDirection.front;
+  var _cameraLensDirection = CameraLensDirection.back;
 
   @override
   void dispose() {
@@ -131,7 +131,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           });
           showSuccess(
                   message:
-                      '${user.firstName} ${user.lastName} is detected successfully')
+                      '${user.firstName} ${user.lastName} is detected successfully. Records added successfully.')
               .show(context)
               .then(
             (value) async {
@@ -296,13 +296,16 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
       // }
 
       // Construct the file path where the PDF will be saved
-      final filePath = "$path/punch_in_out_report_${DateTime.now()                                            }.pdf";
+      final filePath = "$path/punch_in_out_report_${DateTime.now()}.pdf";
       final file = File(filePath);
 
       // Save the PDF file to the specified path
       try {
         await file.writeAsBytes(await pdf.save());
         print("PDF saved to: $filePath");
+        showSuccess(message: 'Pdf download successfully.').show(context).then(
+              (value) => context.router.maybePop(),
+            );
       } catch (e) {
         print("Error saving PDF: $e");
       }

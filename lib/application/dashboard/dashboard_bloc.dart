@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:attandence_system/domain/auth/account_failure.dart';
+import 'package:camera/camera.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -14,10 +15,12 @@ part 'dashboard_bloc.freezed.dart';
 @injectable
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   late Timer timer;
+
   DashboardBloc() : super(DashboardState.initial()) {
     on<DashboardEvent>((event, emit) async {
       await event.map(
         getCurrentTime: (value) async {
+    
           timer = Timer.periodic(const Duration(seconds: 1), (timer) {
             if (!isClosed) {
               add(DashboardEvent.updateCurrentTime());
