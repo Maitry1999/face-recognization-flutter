@@ -1,15 +1,9 @@
-import 'dart:io';
-
 import 'package:attandence_system/application/dashboard/dashboard_bloc.dart';
 import 'package:attandence_system/domain/core/math_utils.dart';
-import 'package:attandence_system/infrastructure/account/account_entity.dart';
 import 'package:attandence_system/injection.dart';
-import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
 import 'package:attandence_system/presentation/common/widgets/base_text.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_appbar.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:attandence_system/presentation/core/buttons/common_button.dart';
 import 'package:attandence_system/presentation/core/style/app_colors.dart';
 import 'package:auto_route/auto_route.dart';
@@ -33,7 +27,13 @@ class DashboardView extends StatelessWidget {
               actions: [
                 IconButton(
                   onPressed: () {
-                    generateUserPunchInOutReport();
+                    context.router.push(
+                      PageRouteInfo(
+                        FaceDetectorView.name,
+                        args: FaceDetectorViewArgs(forDownloadData: true),
+                      ),
+                    );
+                    // generateUserPunchInOutReport();
                   },
                   icon: Icon(
                     Icons.download,
@@ -61,92 +61,33 @@ class DashboardView extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: getSize(20)),
-                CommonButton(
-                    onPressed: () {
-                      context.router.push(PageRouteInfo(FaceDetectorView.name,
-                          args: FaceDetectorViewArgs(isUserRegistring: false)));
-                    },
-                    buttonText: 'Detect')
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: getSize(20)),
+                  child: Center(
+                    child: CommonButton(
+                        onPressed: () {
+                          context.router.push(
+                            PageRouteInfo(
+                              FaceDetectorView.name,
+                              args:
+                                  FaceDetectorViewArgs(isUserRegistring: false),
+                            ),
+                          );
+                        },
+                        buttonText: 'Detect'),
+                  ),
+                )
                 // Expanded(
-                //     child: widget.FaceDetectorView(
-                //   isUserRegistring: false,
-                // )),
+                //   child: widget.FaceDetectorView(
+                //     isUserRegistring: false,
+                //   ),
+                // ),
               ],
             ),
           );
         },
       ),
     );
-  }
-
-  Future<void> generateUserPunchInOutReport() async {
-    // Fetch user data
-    List<AccountEntity> users = getCurrentUser()
-        .map(
-          (e) => AccountEntity.fromDomain(e),
-        )
-        .toList();
-
-    // Create a PDF document
-    final pdf = pw.Document();
-
-    // Loop through each user and their punch-in/out times
-    for (var user in users) {
-      if (user.punchInOutTime != null && user.punchInOutTime!.isNotEmpty) {
-        // Group by date
-        Map<DateTime, List<DateTime>> punchTimesByDate = {};
-        for (var punchTime in user.punchInOutTime!) {
-          DateTime dateOnly =
-              DateTime(punchTime.year, punchTime.month, punchTime.day);
-          punchTimesByDate.putIfAbsent(dateOnly, () => []).add(punchTime);
-        }
-
-        // Add a page for each user
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Column(
-                children: [
-                  pw.Text(
-                      'Punch In/Out Times for ${user.firstName} ${user.lastName}',
-                      style: pw.TextStyle(fontSize: 24)),
-                  pw.SizedBox(height: 20),
-                  pw.Table.fromTextArray(
-                    context: context,
-                    data: <List<String>>[
-                      <String>['Date', 'Punch Times'],
-                      ...punchTimesByDate.entries.map((entry) {
-                        String date =
-                            '${entry.key.day}/${entry.key.month}/${entry.key.year}';
-                        String punchTimes = entry.value
-                            .map((time) => '${time.hour}:${time.minute}')
-                            .join(', ');
-                        return [date, punchTimes];
-                      }),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      }
-    }
-
-    // Save the PDF file to internal storage
-    try {
-      final directory =
-          await getApplicationDocumentsDirectory(); // Get internal storage directory
-      final file = File(
-          "${directory.path}/punch_in_out_report.pdf"); // Specify the file name
-      await file.writeAsBytes(await pdf.save());
-      print("PDF saved to: ${file.path}");
-
-      // Optionally, you can open the file or show a success message
-      // You can use a package like open_file or url_launcher to open the PDF
-    } catch (e) {
-      print("Error saving PDF: $e");
-    }
   }
 
   void _showRegisterBottomSheet(BuildContext context) {

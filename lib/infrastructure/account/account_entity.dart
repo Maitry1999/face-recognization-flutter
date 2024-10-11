@@ -27,7 +27,7 @@ class AccountEntity extends HiveObject {
   @HiveField(10)
   final String? boundingBoxes; // New field for storing face data
   @HiveField(11)
-  final List? predictedData; // New field for storing face data
+  final List<double>? predictedData; // New field for storing face data
   @HiveField(12)
   final bool? isAdmin; // New field for storing face data
   AccountEntity(

@@ -18,6 +18,6 @@ class Account with _$Account {
     bool? isAdmin,
     String? faceData, // New field for storing face data
     String? boundingBox, // New field for storing face data
-    List? predictedData,
+    List<double>? predictedData,
   }) = _Account;
 }

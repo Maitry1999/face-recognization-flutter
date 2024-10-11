@@ -1,4 +1,5 @@
 import 'dart:developer' as dev;
+import 'dart:io';
 import 'dart:math';
 
 import 'package:attandence_system/domain/account/account.dart';
@@ -11,10 +12,12 @@ import 'package:attandence_system/presentation/face_recognization/face_detector_
 import 'package:attandence_system/presentation/services/ml_service.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:camera/camera.dart';
+import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:hive/hive.dart';
-
+import 'package:pdf/widgets.dart' as pw;
+import 'package:permission_handler/permission_handler.dart';
 import 'detector_view.dart';
 
 @RoutePage(name: 'FaceDetectorView')
@@ -36,7 +39,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
       enableTracking: true,
       enableClassification: true,
       minFaceSize: 1,
-      performanceMode: FaceDetectorMode.accurate,
     ),
   );
   bool _canProcess = true;
@@ -71,6 +73,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     setState(() {
       _text = '';
     });
+    print(inputImage);
     final faces =
         await _faceDetector.processImage(inputImage.entries.first.value);
 
@@ -99,9 +102,32 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           .setCurrentPrediction(inputImage.entries.first.key, faces.first);
       if (isFullFaceRecognized(faces.first, 1)) {
         Account? user = await getIt<MLService>().predict();
-        if (user != null && !widget.isUserRegistring) {
+        if (widget.forDownloadData) {
+          if (user != null) {
+            setState(() {
+              _canProcess = false;
+              _faceDetector.close();
+            });
+            if (user.isAdmin == true) {
+              generateUserPunchInOutReport();
+            } else {
+              showError(message: 'Only Admin can download this report')
+                  .show(context)
+                  .then(
+                (value) async {
+                  // await updatePunchInOutTime(user.userId ?? '');
+                  context.router.maybePop();
+                },
+              );
+            }
+          }
+        }
+        if (user != null &&
+            !widget.isUserRegistring &&
+            !widget.forDownloadData) {
           setState(() {
             _canProcess = false;
+            _faceDetector.close();
           });
           showSuccess(
                   message:
@@ -127,9 +153,10 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
         await Future.delayed(
           Duration(seconds: 4),
           () async {
-            // setState(() {
-            //   _canProcess = false;
-            // });
+            setState(() {
+              _canProcess = false;
+              _faceDetector.close();
+            });
             await context.router
                 .maybePop([inputImage.entries.first.key, boundingBoxes]);
           },
@@ -183,6 +210,104 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           'Updated Punch In/Out Time for User ${existingUser.firstName} ${existingUser.lastName}: $updatedPunchInOutTime');
     } else {
       dev.log('User with userId: $userId not found in Hive.');
+    }
+  }
+
+  Future<void> generateUserPunchInOutReport() async {
+    // Fetch user data
+    // Assuming getCurrentUser and other methods are already defined
+
+    List<AccountEntity> users =
+        getCurrentUser().map((e) => AccountEntity.fromDomain(e)).toList();
+
+// Create a PDF document
+    final pdf = pw.Document();
+
+// Group the data together for all users without generating new pages for each user
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Text('Punch In/Out Times Report',
+                  style: pw.TextStyle(fontSize: 24)),
+              pw.SizedBox(height: 20),
+              // Iterate through each user and display their punch-in/out times in the same table
+              ...users.map((user) {
+                if (user.punchInOutTime != null &&
+                    user.punchInOutTime!.isNotEmpty) {
+                  // Group by date
+                  Map<DateTime, List<DateTime>> punchTimesByDate = {};
+                  for (var punchTime in user.punchInOutTime!) {
+                    DateTime dateOnly = DateTime(
+                        punchTime.year, punchTime.month, punchTime.day);
+                    punchTimesByDate
+                        .putIfAbsent(dateOnly, () => [])
+                        .add(punchTime);
+                  }
+
+                  return pw.Column(
+                    children: [
+                      pw.Text(
+                        'Punch In/Out Times for ${user.firstName} ${user.lastName}',
+                        style: pw.TextStyle(
+                            fontSize: 20, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.SizedBox(height: 10),
+                      pw.Table.fromTextArray(
+                        context: context,
+                        data: <List<String>>[
+                          <String>['Date', 'Punch Times'],
+                          ...punchTimesByDate.entries.map((entry) {
+                            String date =
+                                '${entry.key.day}/${entry.key.month}/${entry.key.year}';
+                            String punchTimes = entry.value
+                                .map((time) => '${time.hour}:${time.minute}')
+                                .join(', ');
+                            return [date, punchTimes];
+                          }),
+                        ],
+                      ),
+                      pw.SizedBox(height: 20), // Space between users
+                    ],
+                  );
+                } else {
+                  return pw
+                      .SizedBox(); // Empty if no punch times exist for user
+                }
+              }),
+            ],
+          );
+        },
+      ),
+    );
+
+// Request the necessary permissions
+    var status = await Permission.storage.request();
+
+    if (status.isGranted) {
+      // Get external storage path for downloads directory
+      var path = await ExternalPath.getExternalStoragePublicDirectory(
+          ExternalPath.DIRECTORY_DOWNLOADS);
+
+      // if (path == null) {
+      //   print("Failed to get the external storage path.");
+      //   return;
+      // }
+
+      // Construct the file path where the PDF will be saved
+      final filePath = "$path/punch_in_out_report_${DateTime.now()                                            }.pdf";
+      final file = File(filePath);
+
+      // Save the PDF file to the specified path
+      try {
+        await file.writeAsBytes(await pdf.save());
+        print("PDF saved to: $filePath");
+      } catch (e) {
+        print("Error saving PDF: $e");
+      }
+    } else {
+      print("Permission denied. Cannot save to external storage.");
     }
   }
 

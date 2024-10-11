@@ -1,21 +1,21 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:developer' as dev;
 import 'dart:typed_data';
 import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
 import 'package:attandence_system/presentation/services/image_converter.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as imglib;
 
 class MLService {
   Interpreter? _interpreter;
-  double threshold = 0.6;
+  double threshold = 0.5; // Adjusted threshold for better matching
 
-  List _predictedData = [];
-  List get predictedData => _predictedData;
+  List<double> _predictedData = [];
+  List<double> get predictedData => _predictedData;
 
   Future initialize() async {
     late Delegate delegate;
@@ -24,27 +24,21 @@ class MLService {
         delegate = GpuDelegateV2(
           options: GpuDelegateOptionsV2(
             isPrecisionLossAllowed: false,
-            // inferencePreference: TfLiteGpuInferenceUsage.fastSingleAnswer,
-            // inferencePriority1: TfLiteGpuInferencePriority.minLatency,
-            // inferencePriority2: TfLiteGpuInferencePriority.auto,
-            // inferencePriority3: TfLiteGpuInferencePriority.auto,
           ),
         );
       } else if (Platform.isIOS) {
         delegate = GpuDelegate(
           options: GpuDelegateOptions(
             allowPrecisionLoss: true,
-            // waitType: TFLGpuDelegateWaitType.active,
           ),
         );
       }
       var interpreterOptions = InterpreterOptions()..addDelegate(delegate);
-
-      _interpreter = await Interpreter.fromAsset('assets/mobilefacenet.tflite',
+      _interpreter = await Interpreter.fromAsset(
+          'assets/mobile_face_net.tflite',
           options: interpreterOptions);
     } catch (e) {
-      print('Failed to load model.');
-      print(e);
+      print('Failed to load model: $e');
     }
   }
 
@@ -59,7 +53,7 @@ class MLService {
     _interpreter?.run(input, output);
     output = output.reshape([192]);
 
-    _predictedData = List.from(output);
+    _predictedData = List<double>.from(output);
   }
 
   Future<Account?> predict() async {
@@ -106,21 +100,21 @@ class MLService {
     return convertedBytes.buffer.asFloat32List();
   }
 
-  Future<Account?> _searchResult(List predictedData) async {
-// Replace with your actual threshold value
-    double threshold = 0.8;
-
-    double minDist = double.maxFinite; // Use maxFinite for initial comparison
+  Future<Account?> _searchResult(List<double> predictedData) async {
+    double minDist = double.maxFinite; // Initialize to max value
     double currDist = 0.0;
     Account? predictedResult;
 
     // Get all users from Hive box
     List<Account> users = getCurrentUser();
 
-    print('users.length => ${users.length}');
-
     for (Account u in users) {
-      currDist = _euclideanDistance(u.predictedData, predictedData);
+      currDist =
+          _euclideanDistance(u.predictedData as List<double>, predictedData);
+      dev.log('currDist : $currDist');
+      dev.log('threshold : $threshold');
+      dev.log('minDist : $minDist');
+
       if (currDist <= threshold && currDist < minDist) {
         minDist = currDist;
         predictedResult = u; // Store the best matching user
@@ -130,9 +124,8 @@ class MLService {
     return predictedResult; // Return the predicted user or null
   }
 
-  double _euclideanDistance(List? e1, List? e2) {
-    if (e1 == null || e2 == null) throw Exception("Null argument");
-    print('$e1 $e2');
+  double _euclideanDistance(List<double> e1, List<double> e2) {
+    if (e1.length != e2.length) throw Exception("Mismatched dimensions");
     double sum = 0.0;
     for (int i = 0; i < e1.length; i++) {
       sum += pow((e1[i] - e2[i]), 2);
@@ -144,5 +137,7 @@ class MLService {
     _predictedData = value;
   }
 
-  dispose() {}
+  void dispose() {
+    _interpreter?.close();
+  }
 }
