@@ -1,4 +1,3 @@
-
 import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/auth/account_failure.dart';
 import 'package:attandence_system/domain/auth/auth_value_objects.dart';
@@ -40,12 +39,6 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
                   authFailureOrSuccessOption: none(),
                 ),
               );
-              // e.context.router.push(
-              //   PageRouteInfo(
-              //     FaceDetectorView.name,
-              //     args: FaceDetectorViewArgs(isUserRegistring: true),
-              //   ),
-              // );
 
               failureOrSuccess = await _authFacade.registerUserData(
                 Account(
@@ -119,63 +112,6 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
                 authFailureOrSuccessOption: none(),
               ),
             );
-          },
-          start: (Start value) async {
-            // emit(
-            //   state.copyWith(
-            //     initializing: true,
-            //   ),
-            // );
-
-            // await state.cameraService.initialize().then(
-            //       (value) => emit(
-            //         state.copyWith(
-            //           initializing: false,
-            //         ),
-            //       ),
-            //     );
-            // state.faceDetectorService.initialize();
-            // add(AddNewMemberEvent.frameFaces());
-          },
-          frameFaces: (FrameFaces value) async {
-            // emit(state.copyWith(imageSize: state.cameraService.getImageSize()));
-
-            // state.cameraService.cameraController
-            //     ?.startImageStream((image) async {
-            //   if (state.cameraService.cameraController != null) {
-            //     if (state.detectingFaces) return;
-            //     // emit(state.copyWith(detectingFaces: true));
-
-            //     try {
-            //       await state.faceDetectorService.detectFacesFromImage(
-            //         image,
-            //         state.cameraService.cameraController,
-            //       );
-
-            //       if (state.faceDetectorService.faces.isNotEmpty) {
-            //         log('${state.faceDetectorService.faces.asMap()}');
-            //         // emit(state.copyWith(
-            //         //     faceDetected: state.faceDetectorService.faces.first));
-            //         // // setState(() {
-            //         // //   faceDetected = _faceDetectorService.faces[0];
-            //         // // });
-            //         // if (state.saving) {
-            //         //   state.mlService
-            //         //       .setCurrentPrediction(image, state.faceDetected);
-            //         //   emit(state.copyWith(saving: false));
-            //         // }
-            //       } else {
-            //         print('face is null');
-            //         //emit(state.copyWith(faceDetected: null));
-            //       }
-
-            //       //emit(state.copyWith(detectingFaces: false));
-            //     } catch (e) {
-            //       print('Error _faceDetectorService face => $e');
-            //       // emit(state.copyWith(detectingFaces: false));
-            //     }
-            //   }
-            // });
           },
           isNewMemberAdmin: (IsNewMemberAdmin value) async {
             emit(

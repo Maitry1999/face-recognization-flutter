@@ -3,7 +3,7 @@ import 'package:attandence_system/injection.dart';
 import 'package:attandence_system/presentation/core/app_router.dart';
 import 'package:attandence_system/presentation/core/app_widget.dart';
 import 'package:attandence_system/presentation/core/restart_widget.dart';
-import 'package:attandence_system/presentation/services/ml_service.dart';
+
 import 'package:attandence_system/setup_hive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,9 +26,6 @@ Future<void> main() async {
     ],
   );
   getIt.registerSingleton<AppRouter>(AppRouter());
-  // getIt.registerSingleton<CameraService>(CameraService());
-  // getIt.registerSingleton<FaceDetectorService>(FaceDetectorService());
-  getIt.registerSingleton<MLService>(MLService()).initialize();
 
   await dotenv.load(fileName: '.env');
   configureInjection(Environment.dev);
@@ -41,7 +38,4 @@ Future<void> main() async {
   runApp(
     RestartWidget(child: AppWidget()),
   );
-  // runApp(MaterialApp.router(
-  // //  home: FaceDetectorView(),
-  // ));
 }

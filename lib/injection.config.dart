@@ -14,7 +14,6 @@ import 'package:attandence_system/application/auth/auth_status/auth_status_bloc.
     as _i1020;
 import 'package:attandence_system/application/dashboard/dashboard_bloc.dart'
     as _i654;
-import 'package:attandence_system/application/home/home_bloc.dart' as _i334;
 import 'package:attandence_system/domain/auth/i_auth_facade.dart' as _i947;
 import 'package:attandence_system/infrastructure/auth/auth_facade.dart' as _i9;
 import 'package:get_it/get_it.dart' as _i174;
@@ -31,7 +30,6 @@ extension GetItInjectableX on _i174.GetIt {
       environment,
       environmentFilter,
     );
-    gh.factory<_i334.HomeBloc>(() => _i334.HomeBloc());
     gh.factory<_i654.DashboardBloc>(() => _i654.DashboardBloc());
     gh.lazySingleton<_i947.IAuthFacade>(() => _i9.AuthFacade());
     gh.factory<_i754.AddNewMemberBloc>(

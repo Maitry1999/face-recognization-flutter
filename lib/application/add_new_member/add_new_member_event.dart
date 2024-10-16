@@ -20,8 +20,7 @@ class AddNewMemberEvent with _$AddNewMemberEvent {
       DesignationChanged;
   const factory AddNewMemberEvent.selectCountryCode(String counryCode) =
       SelectCountryCode;
-  const factory AddNewMemberEvent.start() = Start;
-  const factory AddNewMemberEvent.frameFaces() = FrameFaces;
+
   const factory AddNewMemberEvent.isNewMemberAdmin(
       bool isAdmin, List<double> embeddings) = IsNewMemberAdmin;
 }
