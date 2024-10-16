@@ -21,13 +21,10 @@ class AccountEntity extends HiveObject {
 
   @HiveField(7)
   final List<DateTime>? punchInOutTime;
+
   @HiveField(8)
-  final String? faceData; // New field for storing face data
-  @HiveField(9)
-  final String? boundingBoxes; // New field for storing face data
-  @HiveField(10)
   final List<double>? predictedData; // New field for storing face data
-  @HiveField(11)
+  @HiveField(9)
   final bool? isAdmin; // New field for storing face data
   AccountEntity(
     this.userId,
@@ -38,8 +35,6 @@ class AccountEntity extends HiveObject {
     this.phone,
     this.designation,
     this.punchInOutTime,
-    this.faceData,
-    this.boundingBoxes,
     this.predictedData,
     this.isAdmin,
   );
@@ -54,8 +49,6 @@ class AccountEntity extends HiveObject {
       phone: phone,
       designation: designation,
       punchInOutTime: punchInOutTime,
-      faceData: faceData,
-      boundingBox: boundingBoxes,
       predictedData: predictedData,
       isAdmin: isAdmin,
     );
@@ -71,8 +64,6 @@ class AccountEntity extends HiveObject {
       account.phone,
       account.designation,
       account.punchInOutTime,
-      account.faceData,
-      account.boundingBox,
       account.predictedData,
       account.isAdmin,
     );

@@ -15,8 +15,6 @@ class Account with _$Account {
     int? phone,
     List<DateTime>? punchInOutTime,
     bool? isAdmin,
-    String? faceData, // New field for storing face data
-    String? boundingBox, // New field for storing face data
     List<double>? predictedData,
   }) = _Account;
 }

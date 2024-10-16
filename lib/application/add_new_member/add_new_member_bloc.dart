@@ -8,7 +8,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:injectable/injectable.dart';
-import 'package:local_auth/local_auth.dart';
 
 part 'add_new_member_state.dart';
 part 'add_new_member_event.dart';

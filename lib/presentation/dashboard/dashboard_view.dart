@@ -65,11 +65,6 @@ class DashboardView extends StatelessWidget {
                   CommonButton(
                     onPressed: () {
                       _showRegisterBottomSheet(context);
-                      // context.router.push(
-                      //   PageRouteInfo(
-                      //     AddMemberView.name,
-                      //   ),
-                      // );
                     },
                     buttonText: 'Add Member',
                   ),

@@ -18,6 +18,7 @@ import 'package:hive/hive.dart';
 import 'package:camera/camera.dart';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:image/image.dart' as imglib;
@@ -47,7 +48,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   CustomPainter? painter;
   CameraLensDirection _direction = CameraLensDirection.front;
   dynamic data = {};
-  double threshold = 0.8;
+  double threshold = 1;
   Directory? tempDir;
   List<double>? e1; // Specify that this list will hold doubles
   bool _faceFound = false;
@@ -134,7 +135,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                       x.round(), y.round(), w.round(), h.round());
                   croppedImage = imglib.copyResizeCropSquare(croppedImage, 112);
                   var res = _recog(croppedImage);
-                  finalResult.add(res.firstName, face);
+                  finalResult.add('${res.firstName} ${res.lastName}', face);
 
                   userId = res.userId ?? "";
                   setState(() {});
@@ -146,16 +147,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                   isDownloadTapped = isUserAdmin;
                 });
 
-                // if (userId.isNotEmpty && !widget.forDownloadData) {
-                //   // await Future.delayed(
-                //   //   Duration(seconds: 4),
-                //   //   () async {
-                //   //     await updatePunchInOutTime(
-                //   //       userId,
-                //   //     );
-                //   //   },
-                //   // );
-                // }
                 _isDetecting = false;
               },
             ).catchError(
@@ -202,8 +193,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
         existingUser.designation,
 
         updatedPunchInOutTime, // Update this field
-        existingUser.faceData,
-        existingUser.boundingBoxes,
+
         existingUser.predictedData,
         existingUser.isAdmin,
       );
@@ -447,15 +437,16 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
 
   Future<void> generateUserPunchInOutReport() async {
     // Fetch user data
-    // Assuming getCurrentUser and other methods are already defined
-
     List<AccountEntity> users =
         getCurrentUser().map((e) => AccountEntity.fromDomain(e)).toList();
 
-// Create a PDF document
+    // Create a PDF document
     final pdf = pw.Document();
 
-// Group the data together for all users without generating new pages for each user
+    // Create a date format for the time in AM/PM format
+    final timeFormat = DateFormat('h:mm a');
+
+    // Add a page to the PDF document
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) {
@@ -464,7 +455,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
               pw.Text('Punch In/Out Times Report',
                   style: pw.TextStyle(fontSize: 24)),
               pw.SizedBox(height: 20),
-              // Iterate through each user and display their punch-in/out times in the same table
+              // Iterate through each user and display their punch-in/out times
               ...users.map((user) {
                 if (user.punchInOutTime != null &&
                     user.punchInOutTime!.isNotEmpty) {
@@ -479,22 +470,39 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                   }
 
                   return pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
+                      // Display user details
                       pw.Text(
-                        'Punch In/Out Times for ${user.firstName} ${user.lastName}',
+                        'User ID: ${user.userId}',
                         style: pw.TextStyle(
-                            fontSize: 20, fontWeight: pw.FontWeight.bold),
+                            fontSize: 16, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.Text(
+                        'Name: ${user.firstName} ${user.lastName}',
+                        style: pw.TextStyle(fontSize: 16),
+                      ),
+                      pw.Text(
+                        'Email: ${user.email}',
+                        style: pw.TextStyle(fontSize: 16),
                       ),
                       pw.SizedBox(height: 10),
+
+                      // Display punch-in/out times in a table with fixed first column size
                       pw.Table.fromTextArray(
                         context: context,
+                        columnWidths: {
+                          0: const pw.FixedColumnWidth(
+                              100), // Fixed width for the first column
+                        },
                         data: <List<String>>[
-                          <String>['Date', 'Punch Times'],
+                          <String>['Date', 'Punch In/Out Times'],
                           ...punchTimesByDate.entries.map((entry) {
                             String date =
                                 '${entry.key.day}/${entry.key.month}/${entry.key.year}';
                             String punchTimes = entry.value
-                                .map((time) => '${time.hour}:${time.minute}')
+                                .map((time) => timeFormat
+                                    .format(time)) // Convert to AM/PM format
                                 .join(', ');
                             return [date, punchTimes];
                           }),
@@ -505,7 +513,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                   );
                 } else {
                   return pw
-                      .SizedBox(); // Empty if no punch times exist for user
+                      .SizedBox(); // Empty if no punch times exist for the user
                 }
               }),
             ],
@@ -514,18 +522,18 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
       ),
     );
 
+    // Request storage permissions
     PermissionStatus status;
     if (Platform.isAndroid &&
         await DeviceInfoPlugin()
             .androidInfo
             .then((value) => value.version.sdkInt >= 30)) {
       status = await Permission.manageExternalStorage.request();
-      setState(() {});
     } else {
       status = await Permission.storage.request();
-      setState(() {});
     }
 
+    // Save the PDF if permission is granted
     if (status.isGranted) {
       var path = await ExternalPath.getExternalStoragePublicDirectory(
           ExternalPath.DIRECTORY_DOWNLOADS);
@@ -538,20 +546,10 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
         await file.writeAsBytes(await pdf.save());
         print("PDF saved to: $filePath");
 
-        await context.router
-            .push(PageRouteInfo(SuccessScreen.name,
-                args:
-                    SuccessScreenArgs(message: 'Pdf downloaded successfully.')))
-            .then(
-          (value) {
-            context.router.popUntil((route) => route.isFirst);
-          },
-        );
+        await context.router.push(PageRouteInfo(SuccessScreen.name,
+            args: SuccessScreenArgs(message: 'Pdf downloaded successfully.')));
       } catch (e) {
         print("Error saving PDF: $e");
-        // setState(() {
-        //   isDownloadTapped = false;
-        // });
       }
     } else {
       print("Permission denied.");
