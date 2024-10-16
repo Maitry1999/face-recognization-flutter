@@ -1,38 +1,37 @@
-import 'dart:io';
-
 import 'package:attandence_system/application/add_new_member/add_new_member_bloc.dart';
 import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/injection.dart';
 import 'package:attandence_system/presentation/common/utils/app_focus.dart';
 import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
-import 'package:attandence_system/presentation/common/utils/image_picker_utils.dart';
 import 'package:attandence_system/presentation/common/widgets/common_country_code_picker.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_appbar.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_text_field.dart';
-import 'package:attandence_system/presentation/common/widgets/image_chosser.dialog.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:attandence_system/presentation/core/buttons/common_button.dart';
-import 'package:attandence_system/presentation/core/style/app_colors.dart';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 
 @RoutePage(name: 'AddMemberView')
 class AddMemberView extends StatelessWidget {
   final bool isAdmin;
-  const AddMemberView({super.key, this.isAdmin = false});
+
+  const AddMemberView({
+    super.key,
+    this.isAdmin = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => getIt<AddNewMemberBloc>()
-        ..add(AddNewMemberEvent.isNewMemberAdmin(isAdmin)),
+        ..add(AddNewMemberEvent.isNewMemberAdmin(isAdmin, [])),
       child: BlocConsumer<AddNewMemberBloc, AddNewMemberState>(
         builder: (context, state) {
           return Scaffold(
             appBar: CustomAppBar(
-              title: 'Add New Member',
+              title: 'Add New ${state.isAdmin ? "Admin" : "Member"}',
               isRoundedCorner: true,
             ),
             body: GestureDetector(
@@ -48,7 +47,6 @@ class AddMemberView extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: getSize(18)),
                   physics: BouncingScrollPhysics(),
                   children: [
-                    getProfileImageView(state, context),
                     SizedBox(
                       height: getSize(20),
                     ),
@@ -74,10 +72,18 @@ class AddMemberView extends StatelessWidget {
                     ),
                     CommonButton(
                       isSubmitting: state.isSubmitting,
-                      onPressed: () {
-                        context
-                            .read<AddNewMemberBloc>()
-                            .add(AddNewMemberEvent.addNewMember(context));
+                      onPressed: () async {
+                        var res = await context.router.push<List<double>>(
+                          PageRouteInfo(
+                            FaceDetectorView.name,
+                            args: FaceDetectorViewArgs(isUserRegistring: true),
+                          ),
+                        );
+
+                        if (res != null) {
+                          context.read<AddNewMemberBloc>().add(
+                              AddNewMemberEvent.addNewMember(context, res));
+                        }
                       },
                       buttonText: 'Add',
                     ),
@@ -105,103 +111,22 @@ class AddMemberView extends StatelessWidget {
                   ),
                 ).show(context);
               },
-              (r) {
+              (r) async {
                 showSuccess(message: 'Employee added successfully.')
                     .show(context)
                     .then(
                   (value) {
-                    context.router.push(
-                      PageRouteInfo(
-                        DashboardView.name,
-                      ),
+                    context.router.popUntil(
+                      (route) => route.isFirst,
                     );
+                    // context.router.maybePop(
+                    //     '${state.firstName.getOrCrash()} ${state.lastName.getOrCrash()}');
                   },
                 );
               },
             ),
           );
         },
-      ),
-    );
-  }
-
-  Center getProfileImageView(AddNewMemberState state, BuildContext context) {
-    return Center(
-      child: Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          CircleAvatar(
-            radius: getSize(50),
-            backgroundColor: Colors.grey,
-            child: CircleAvatar(
-              backgroundColor: AppColors.green,
-              radius: getSize(48),
-              backgroundImage: state.profileImagePath.isEmpty
-                  ? null
-                  : FileImage(
-                      File(state.profileImagePath),
-                    ),
-              child: state.profileImagePath.isEmpty
-                  ? Icon(
-                      Icons.person,
-                      size: getSize(50),
-                      color: AppColors.white,
-                    )
-                  : null,
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              ImageChooserDialog().showImageChooserDialog(
-                takePhotoCallback: () async {
-                  String? path = await ImagePickerUtils().pickImage(
-                      imageSource: ImageSource.camera, context: context);
-
-                  if (path != null) {
-                    context.read<AddNewMemberBloc>().add(
-                          AddNewMemberEvent.changeProfileImage(
-                            path,
-                          ),
-                        );
-                  }
-                  context.router.maybePop();
-                },
-                selectPhotoCallback: () async {
-                  String? path = await ImagePickerUtils().pickImage(
-                      imageSource: ImageSource.gallery, context: context);
-                  if (path != null) {
-                    context.read<AddNewMemberBloc>().add(
-                          AddNewMemberEvent.changeProfileImage(
-                            path,
-                          ),
-                        );
-                  }
-                  context.router.maybePop();
-                },
-                context: context,
-              );
-            },
-            child: Container(
-              height: getSize(30),
-              width: getSize(30),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.black.withOpacity(0.10),
-                    offset: Offset(1, 1),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.edit,
-                size: getSize(14),
-              ),
-            ),
-          )
-        ],
       ),
     );
   }

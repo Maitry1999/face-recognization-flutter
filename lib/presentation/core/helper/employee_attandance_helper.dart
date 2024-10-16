@@ -18,7 +18,7 @@ class EmployeeAttandanceHelper {
     String? lastPunchDate = lastPunchDateBox.get(userId);
 
     // If it's a new day, store the old punches in history and clear today's punches
-    if (lastPunchDate == null || lastPunchDate != today) {
+    if (lastPunchDate != today) {
       await saveToHistory(
           userId, lastPunchDate); // Save the old day's punches in history
       await clearPunchesForToday(userId); // Clear today's punches

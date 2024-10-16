@@ -29,7 +29,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         await event.map(
           initEvent: (value) async {},
           punchInOut: (PunchInOut e) async {
-            String punchType = state.isPunchIn ? 'out' : 'in';
+          //  String punchType = state.isPunchIn ? 'out' : 'in';
             await LocalAuthHelper.isDeviceSupported(state.auth).then(
               (value) async {
                 if (value) {

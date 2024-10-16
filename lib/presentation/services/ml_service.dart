@@ -12,7 +12,7 @@ import 'package:image/image.dart' as imglib;
 
 class MLService {
   Interpreter? _interpreter;
-  double threshold = 0.5; // Adjusted threshold for better matching
+  double threshold = 1; // Adjusted threshold for better matching
 
   List<double> _predictedData = [];
   List<double> get predictedData => _predictedData;

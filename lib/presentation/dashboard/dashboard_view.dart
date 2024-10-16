@@ -6,6 +6,7 @@ import 'package:attandence_system/presentation/common/widgets/custom_appbar.dart
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:attandence_system/presentation/core/buttons/common_button.dart';
 import 'package:attandence_system/presentation/core/style/app_colors.dart';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -24,65 +25,56 @@ class DashboardView extends StatelessWidget {
           return Scaffold(
             appBar: CustomAppBar(
               title: 'Attendance System',
-              actions: [
-                IconButton(
-                  onPressed: () {
-                    context.router.push(
-                      PageRouteInfo(
-                        FaceDetectorView.name,
-                        args: FaceDetectorViewArgs(forDownloadData: true),
-                      ),
-                    );
-                    // generateUserPunchInOutReport();
-                  },
-                  icon: Icon(
-                    Icons.download,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    _showRegisterBottomSheet(context);
-                  },
-                  icon: Icon(
-                    Icons.add,
-                  ),
-                ),
-              ],
+              actions: [],
             ),
-            body: Column(
-              children: [
-                SizedBox(height: getSize(20)),
-                Center(
-                  child: BaseText(
-                    text: state.currentTime,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    textAlign: TextAlign.center,
+            body: Padding(
+              padding: EdgeInsets.symmetric(horizontal: getSize(20)),
+              child: Column(
+                children: [
+                  SizedBox(height: getSize(20)),
+                  Center(
+                    child: BaseText(
+                      text: state.currentTime,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
-                SizedBox(height: getSize(20)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: getSize(20)),
-                  child: Center(
-                    child: CommonButton(
-                        onPressed: () {
-                          context.router.push(
-                            PageRouteInfo(
-                              FaceDetectorView.name,
-                              args:
-                                  FaceDetectorViewArgs(isUserRegistring: false),
-                            ),
-                          );
-                        },
-                        buttonText: 'Detect'),
+                  SizedBox(height: getSize(20)),
+                  CommonButton(
+                    onPressed: () {
+                      context.router.push(
+                        PageRouteInfo(
+                          FaceDetectorView.name,
+                        ),
+                      );
+                    },
+                    buttonText: 'In/Out',
                   ),
-                )
-                // Expanded(
-                //   child: widget.FaceDetectorView(
-                //     isUserRegistring: false,
-                //   ),
-                // ),
-              ],
+                  SizedBox(height: getSize(20)),
+                  CommonButton(
+                    onPressed: () {
+                      context.router.push(
+                        PageRouteInfo(FaceDetectorView.name,
+                            args: FaceDetectorViewArgs(forDownloadData: true)),
+                      );
+                    },
+                    buttonText: 'Download Report',
+                  ),
+                  SizedBox(height: getSize(20)),
+                  CommonButton(
+                    onPressed: () {
+                      _showRegisterBottomSheet(context);
+                      // context.router.push(
+                      //   PageRouteInfo(
+                      //     AddMemberView.name,
+                      //   ),
+                      // );
+                    },
+                    buttonText: 'Add Member',
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -90,8 +82,8 @@ class DashboardView extends StatelessWidget {
     );
   }
 
-  void _showRegisterBottomSheet(BuildContext context) {
-    showModalBottomSheet(
+  Future<String?> _showRegisterBottomSheet(BuildContext context) async {
+    return await showModalBottomSheet<String>(
       context: context,
       elevation: 0,
       builder: (BuildContext context) {
@@ -109,10 +101,9 @@ class DashboardView extends StatelessWidget {
               ),
               SizedBox(height: getSize(20)),
               CommonButton(
-                onPressed: () {
+                onPressed: () async {
                   // Handle Register as Member
-                  context.router.maybePop();
-                  _registerAsMember(context);
+                  context.router.maybePop(await _registerAsMember(context));
                 },
                 buttonText: 'Register as Member',
               ),
@@ -121,10 +112,9 @@ class DashboardView extends StatelessWidget {
                 backgroundColor: AppColors.white,
                 borderColor: AppColors.green,
                 buttonTextColor: AppColors.black,
-                onPressed: () {
+                onPressed: () async {
                   // Handle Register as Admin
-                  context.router.maybePop();
-                  _registerAsAdmin(context);
+                  context.router.maybePop(await _registerAsAdmin(context));
                 },
                 buttonText: 'Register as Admin',
               ),
@@ -136,9 +126,10 @@ class DashboardView extends StatelessWidget {
     );
   }
 
-  void _registerAsMember(BuildContext context) {
+  _registerAsMember(BuildContext context) async {
     print('Registered as Member');
-    context.router.push(
+    await context.router.maybePop();
+    await context.router.push(
       PageRouteInfo(
         AddMemberView.name,
         args: AddMemberViewArgs(isAdmin: false),
@@ -146,13 +137,17 @@ class DashboardView extends StatelessWidget {
     );
   }
 
-  void _registerAsAdmin(BuildContext context) {
+  _registerAsAdmin(BuildContext context) async {
     // Navigate to Admin Registration Screen or handle the admin registration logic here
     print('Registered as Admin');
-    context.router.push(
+    await context.router.maybePop();
+
+    await context.router.push(
       PageRouteInfo(
         AddMemberView.name,
-        args: AddMemberViewArgs(isAdmin: true),
+        args: AddMemberViewArgs(
+          isAdmin: true,
+        ),
       ),
     );
   }

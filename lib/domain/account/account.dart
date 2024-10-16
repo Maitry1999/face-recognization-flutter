@@ -12,7 +12,6 @@ class Account with _$Account {
     String? email,
     String? countryCode,
     String? designation,
-    String? profileImage,
     int? phone,
     List<DateTime>? punchInOutTime,
     bool? isAdmin,

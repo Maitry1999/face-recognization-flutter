@@ -11,6 +11,6 @@ class AppRouter extends RootStackRouter {
         AutoRoute(page: HistoryView.page),
         AutoRoute(page: FaceDetectorView.page),
         AutoRoute(page: DashboardView.page),
-
+        AutoRoute(page: SuccessScreen.page),
       ];
 }

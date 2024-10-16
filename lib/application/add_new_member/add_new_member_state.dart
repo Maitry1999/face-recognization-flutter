@@ -12,7 +12,6 @@ class AddNewMemberState with _$AddNewMemberState {
     required EmailAddress emailAddress,
     required Username firstName,
     required Username lastName,
-    required String profileImagePath,
     required InputEmptyOrNot designation,
     required MobileNumber mobileNumber,
     required bool showErrorMessages,
@@ -25,6 +24,7 @@ class AddNewMemberState with _$AddNewMemberState {
     required bool isAdmin,
     required Option<Either<AuthFailure, Unit>> authFailureOrSuccessOption,
     required String imagePath,
+    required List<double> embeddings,
 //    Face? faceDetected,
     Size? imageSize,
     required bool detectingFaces,
@@ -44,7 +44,7 @@ class AddNewMemberState with _$AddNewMemberState {
         emailAddress: EmailAddress(''),
         firstName: Username(''),
         lastName: Username(''),
-        profileImagePath: '',
+
         designation: InputEmptyOrNot(''),
         auth: LocalAuthentication(),
         supportState: SupportState.unknown,
@@ -60,6 +60,6 @@ class AddNewMemberState with _$AddNewMemberState {
         detectingFaces: false,
         pictureTaken: false,
         initializing: false,
-        saving: false,
+        saving: false, embeddings: [],
       );
 }

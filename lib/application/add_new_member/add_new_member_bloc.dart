@@ -1,19 +1,12 @@
-import 'dart:developer';
 
 import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/auth/account_failure.dart';
 import 'package:attandence_system/domain/auth/auth_value_objects.dart';
 import 'package:attandence_system/domain/auth/i_auth_facade.dart';
-import 'package:attandence_system/injection.dart';
-import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
-import 'package:attandence_system/presentation/core/app_router.gr.dart';
-import 'package:attandence_system/presentation/services/ml_service.dart';
-import 'package:auto_route/auto_route.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:uuid/uuid.dart';
 import 'package:injectable/injectable.dart';
 import 'package:local_auth/local_auth.dart';
@@ -36,52 +29,37 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
             final isFirstNameValid = state.firstName.isValid();
             final isLastNameValid = state.lastName.isValid();
             final isMobileNumberValid = state.mobileNumber.isValid();
-            if (state.profileImagePath.isEmpty) {
-              await showError(message: 'Please select your profile image')
-                  .show(e.context);
-            }
+
             if (isFirstNameValid &&
                 isLastNameValid &&
                 isMobileNumberValid &&
-                isEmailValid &&
-                state.profileImagePath.isNotEmpty) {
+                isEmailValid) {
               emit(
                 state.copyWith(
                   isSubmitting: true,
                   authFailureOrSuccessOption: none(),
                 ),
               );
-              var boundingBoxes = await e.context.router.push<List>(
-                PageRouteInfo(
-                  FaceDetectorView.name,
-                  args: FaceDetectorViewArgs(isUserRegistring: true),
+              // e.context.router.push(
+              //   PageRouteInfo(
+              //     FaceDetectorView.name,
+              //     args: FaceDetectorViewArgs(isUserRegistring: true),
+              //   ),
+              // );
+
+              failureOrSuccess = await _authFacade.registerUserData(
+                Account(
+                  userId: Uuid().v1(),
+                  countryCode: state.selectedCountrycode,
+                  designation: state.designation.getOrCrash(),
+                  email: state.emailAddress.getOrCrash(),
+                  firstName: state.firstName.getOrCrash(),
+                  lastName: state.lastName.getOrCrash(),
+                  phone: int.tryParse(state.mobileNumber.getOrCrash()),
+                  predictedData: e.embeddings,
+                  isAdmin: state.isAdmin,
                 ),
               );
-
-              if (boundingBoxes != null) {
-                log('Received bounding boxes: $boundingBoxes');
-                getIt<MLService>()
-                    .setCurrentPrediction(boundingBoxes[0], boundingBoxes[1]);
-                Face predictedFace = boundingBoxes[1];
-
-                log('message : ${getIt<MLService>().predictedData}');
-                failureOrSuccess = await _authFacade.registerUserData(
-                  Account(
-                    userId: Uuid().v1(),
-                    countryCode: state.selectedCountrycode,
-                    designation: state.designation.getOrCrash(),
-                    email: state.emailAddress.getOrCrash(),
-                    faceData: predictedFace.landmarks.toString(),
-                    firstName: state.firstName.getOrCrash(),
-                    lastName: state.lastName.getOrCrash(),
-                    phone: int.tryParse(state.mobileNumber.getOrCrash()),
-                    profileImage: state.profileImagePath,
-                    predictedData: getIt<MLService>().predictedData,
-                    boundingBox: predictedFace.boundingBox.toString(),
-                    isAdmin: state.isAdmin,
-                  ),
-                );
-              }
             }
 
             emit(
@@ -130,14 +108,6 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
             emit(
               state.copyWith(
                 selectedCountrycode: value.counryCode,
-                authFailureOrSuccessOption: none(),
-              ),
-            );
-          },
-          changeProfileImage: (value) async {
-            emit(
-              state.copyWith(
-                profileImagePath: value.profileImagePath,
                 authFailureOrSuccessOption: none(),
               ),
             );
@@ -208,7 +178,12 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
             // });
           },
           isNewMemberAdmin: (IsNewMemberAdmin value) async {
-            emit(state.copyWith(isAdmin: value.isAdmin));
+            emit(
+              state.copyWith(
+                isAdmin: value.isAdmin,
+                embeddings: value.embeddings,
+              ),
+            );
           },
         );
       },

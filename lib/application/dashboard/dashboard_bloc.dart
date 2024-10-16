@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:attandence_system/domain/auth/account_failure.dart';
-import 'package:camera/camera.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -20,7 +19,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<DashboardEvent>((event, emit) async {
       await event.map(
         getCurrentTime: (value) async {
-    
           timer = Timer.periodic(const Duration(seconds: 1), (timer) {
             if (!isClosed) {
               add(DashboardEvent.updateCurrentTime());
@@ -49,6 +47,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     });
   }
   String formatDateTime(DateTime dateTime) {
-    return DateFormat('dd/MM/yyyy hh:mm:ss').format(dateTime);
+    return DateFormat('dd/MM/yyyy hh:mm:ss a').format(dateTime);
   }
 }

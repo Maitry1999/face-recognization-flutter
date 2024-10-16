@@ -5,7 +5,6 @@ import 'package:attandence_system/domain/auth/account_failure.dart';
 import 'package:attandence_system/domain/auth/i_auth_facade.dart';
 import 'package:attandence_system/infrastructure/account/account_entity.dart';
 import 'package:attandence_system/infrastructure/core/network/hive_box_names.dart';
-import 'package:attandence_system/infrastructure/core/network/injectable_module.dart';
 import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/services.dart';
@@ -15,9 +14,9 @@ import 'package:injectable/injectable.dart';
 
 @LazySingleton(as: IAuthFacade)
 class AuthFacade implements IAuthFacade {
-  final ApiService apiService;
+  //final ApiService apiService;
 
-  AuthFacade(this.apiService);
+  AuthFacade();
 
   @override
   Future<bool> checkAuthenticated() async {

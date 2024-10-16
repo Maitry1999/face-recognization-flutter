@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:attandence_system/application/auth/auth_status/auth_status_bloc.dart';
@@ -35,9 +36,11 @@ class SplashPage extends StatelessWidget {
           },
         );
       },
-      child: const Scaffold(
+      child: Scaffold(
         body: Center(
-          child: FlutterLogo(),
+          child: FlutterLogo(
+            size: getSize(150),
+          ),
         ),
       ),
     );
