@@ -1,10 +1,11 @@
-import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:io';
 import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/infrastructure/account/account_entity.dart';
 import 'package:attandence_system/infrastructure/core/network/hive_box_names.dart';
+import 'package:attandence_system/infrastructure/punch_in_out/punch_in_out_entity.dart';
+import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
 import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:attandence_system/presentation/core/buttons/common_button.dart';
@@ -19,7 +20,6 @@ import 'package:camera/camera.dart';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:image/image.dart' as imglib;
 import 'package:permission_handler/permission_handler.dart';
@@ -65,13 +65,8 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   Future<void> loadModel() async {
     try {
       final gpuDelegateV2 = tfl.GpuDelegateV2(
-          options: tfl.GpuDelegateOptionsV2(
-              // false,
-              // tfl.TfLiteGpuInferenceUsage.fastSingleAnswer,
-              // tfl.TfLiteGpuInferencePriority.minLatency,
-              // tfl.TfLiteGpuInferencePriority.auto,
-              // tfl.TfLiteGpuInferencePriority.auto,
-              ));
+        options: tfl.GpuDelegateOptionsV2(),
+      );
 
       var interpreterOptions = tfl.InterpreterOptions()
         ..addDelegate(gpuDelegateV2);
@@ -106,13 +101,13 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           if (!mounted) {
             return;
           }
-          await Future.delayed(Duration(milliseconds: 500));
-          tempDir = await getApplicationDocumentsDirectory();
-          String embPath = '${tempDir!.path}/emb.json';
-          jsonFile = File(embPath);
-          if (jsonFile.existsSync()) {
-            data = json.decode(jsonFile.readAsStringSync());
-          }
+          // await Future.delayed(Duration(milliseconds: 500));
+          // tempDir = await getApplicationDocumentsDirectory();
+          // String embPath = '${tempDir!.path}/emb.json';
+          // jsonFile = File(embPath);
+          // if (jsonFile.existsSync()) {
+          //   data = json.decode(jsonFile.readAsStringSync());
+          // }
 
           _camera?.startImageStream((CameraImage image) {
             if (_isDetecting) return;
@@ -163,7 +158,8 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     setState(() {});
   }
 
-  Future<void> updatePunchInOutTime(String userId) async {
+  Future<void> updatePunchInOutTime(String userId,
+      {required bool isPunchIn}) async {
     // Open the Hive box
     var box = Hive.box<AccountEntity>(BoxNames.currentUser);
 
@@ -176,13 +172,60 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
       // Get the existing AccountEntity
       AccountEntity existingUser = box.getAt(userIndex)!;
 
-      // Update the punchInOutTime
-      List<DateTime> updatedPunchInOutTime = [
-        ...(existingUser.punchInOutTime ?? []), // Keep existing times
-        DateTime.now(), // Add current time
-      ];
+      // Get the user's existing punch in/out records or initialize an empty list
+      List<PunchInOutRecord> punchInOutRecords =
+          existingUser.punchInOutTime ?? [];
 
-      // Create a new instance of AccountEntity with updated punchInOutTime
+      DateTime now = DateTime.now();
+
+      if (isPunchIn) {
+        // Check for any existing punch-in records without a punch-out
+        if (punchInOutRecords.isNotEmpty &&
+            punchInOutRecords.last.punchOut == null) {
+          // Log or show a message indicating the user forgot to punch out
+          dev.log(
+              'Warning: User ${existingUser.firstName} ${existingUser.lastName} forgot to punch out for the last session.');
+          showError(
+                  message:
+                      'Note: You have not punched out for your last session.')
+              .show(context);
+          // Return early to avoid adding a new punch-in record
+          return;
+        }
+        // Punch-In: Add a new entry for punch-in (start a new record)
+        punchInOutRecords.add(
+            PunchInOutRecord(now, null)); // Set punch-out to null initially
+      } else {
+        // Punch-Out: Update the latest punch-in record's punch-out time
+        if (punchInOutRecords.isNotEmpty) {
+          PunchInOutRecord lastRecord = punchInOutRecords.last;
+
+          // Check if the last record's punch-in and punch-out times are the same
+          if (lastRecord.punchOut != null) {
+            // Handle the case where punch-out is clicked without a matching punch-in
+            dev.log('Error: Cannot punch out without a matching punch in.');
+            showError(
+                    message:
+                        'Cannot punch out without a punch in. Please do punch in first.')
+                .show(context);
+            return;
+          }
+
+          // Update the punch-out time to the current time
+          punchInOutRecords[punchInOutRecords.length - 1] =
+              PunchInOutRecord(lastRecord.punchIn, now);
+        } else {
+          // No punch-in records exist, can't punch out without punch-in
+          dev.log('Error: Cannot punch out without any punch in records.');
+          showError(
+                  message:
+                      'Cannot punch out without a punch in record. Please do punch in first.')
+              .show(context);
+          return;
+        }
+      }
+
+      // Create a new AccountEntity with the updated punch in/out records
       AccountEntity updatedUser = AccountEntity(
         existingUser.userId,
         existingUser.firstName,
@@ -191,9 +234,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
         existingUser.countryCode,
         existingUser.phone,
         existingUser.designation,
-
-        updatedPunchInOutTime, // Update this field
-
+        punchInOutRecords, // Updated punch in/out records
         existingUser.predictedData,
         existingUser.isAdmin,
       );
@@ -201,22 +242,21 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
       // Save the updated user back to the Hive box
       await box.putAt(userIndex, updatedUser);
 
+      // Log the update
       dev.log(
-          'Updated Punch In/Out Time for User ${existingUser.firstName} ${existingUser.lastName}: $updatedPunchInOutTime');
+          'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for User ${existingUser.firstName} ${existingUser.lastName}: $punchInOutRecords');
 
+      // Navigate to success screen
       context.router
           .push(PageRouteInfo(SuccessScreen.name,
               args: SuccessScreenArgs(
                   message:
-                      'Updated Punch In/Out Time for Employee ${existingUser.firstName} ${existingUser.lastName}')))
-          .then(
-        (value) async {
-          context.router.popUntil(
-            (route) => route.isFirst,
-          );
-        },
-      );
+                      'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for Employee ${existingUser.firstName} ${existingUser.lastName}')))
+          .then((value) async {
+        context.router.popUntil((route) => route.isFirst);
+      });
     } else {
+      // Log if the user is not found
       dev.log('User with userId: $userId not found in Hive.');
     }
   }
@@ -270,22 +310,49 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
               left: getSize(20),
               right: getSize(20),
               child: Visibility(
-                visible: userId.isNotEmpty && !widget.forDownloadData,
+                visible: !widget.forDownloadData,
                 child: Align(
                   alignment: Alignment.bottomCenter,
-                  child: CommonButton(
-                    backgroundColor:
-                        (userId.isNotEmpty && !widget.forDownloadData)
-                            ? null
-                            : Colors.grey,
-                    onPressed: userId.isNotEmpty && !widget.forDownloadData
-                        ? () {
-                            updatePunchInOutTime(userId);
-                          }
-                        : () {},
-                    //heroTag: null,
-                    buttonText: 'In/Out',
-                    // child: BaseText(text: 'In/Out'),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Visibility(
+                        visible: !widget.isUserRegistring,
+                        child: CommonButton(
+                          backgroundColor:
+                              (userId.isNotEmpty && !widget.forDownloadData)
+                                  ? null
+                                  : Colors.grey,
+                          onPressed: userId.isNotEmpty &&
+                                  !widget.forDownloadData
+                              ? () {
+                                  updatePunchInOutTime(userId, isPunchIn: true);
+                                }
+                              : () {},
+                          buttonText: 'In',
+                        ),
+                      ),
+                      SizedBox(
+                        height: getSize(10),
+                      ),
+                      Visibility(
+                        visible: !widget.isUserRegistring,
+                        child: CommonButton(
+                          backgroundColor:
+                              (userId.isNotEmpty && !widget.forDownloadData)
+                                  ? null
+                                  : Colors.grey,
+                          onPressed:
+                              userId.isNotEmpty && !widget.forDownloadData
+                                  ? () {
+                                      updatePunchInOutTime(userId,
+                                          isPunchIn: false);
+                                    }
+                                  : () {},
+                          buttonText: 'Out',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -417,7 +484,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
 
   Account _nearestNeighbor() {
     double minDist = double.maxFinite;
-    Account label = Account(firstName: 'Not Recognized');
+    Account label = Account(firstName: 'Not', lastName: ' Recognized');
     for (var key in getCurrentUser()) {
       List<double>? e2 = key.predictedData;
       double d = euclideanDistance(e1!, e2!);
@@ -431,7 +498,30 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
 
   Future<void> _addLabel() async {
     if (widget.isUserRegistring && e1 != null && e1!.isNotEmpty) {
-      await context.router.maybePop(e1);
+      if (userId.isNotEmpty && _scanResults != null) {
+        ListMultimap<String, Face> data =
+            _scanResults as ListMultimap<String, Face>;
+        await context.router
+            .push(
+              PageRouteInfo(
+                SuccessScreen.name,
+                args: SuccessScreenArgs(
+                  message:
+                      'User is already available with this name : ${data.keys.first}',
+                  showWarning: true,
+                ),
+              ),
+            )
+            .then(
+              (value) => context.router.popUntil(
+                (route) => route.isFirst,
+              ),
+            );
+
+        return;
+      } else {
+        await context.router.maybePop(e1);
+      }
     }
   }
 
@@ -444,7 +534,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     final pdf = pw.Document();
 
     // Create a date format for the time in AM/PM format
-    final timeFormat = DateFormat('h:mm a');
+    final timeFormat = DateFormat('h:mm:ss a');
 
     // Add a page to the PDF document
     pdf.addPage(
@@ -459,14 +549,15 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
               ...users.map((user) {
                 if (user.punchInOutTime != null &&
                     user.punchInOutTime!.isNotEmpty) {
-                  // Group by date
-                  Map<DateTime, List<DateTime>> punchTimesByDate = {};
-                  for (var punchTime in user.punchInOutTime!) {
-                    DateTime dateOnly = DateTime(
-                        punchTime.year, punchTime.month, punchTime.day);
-                    punchTimesByDate
-                        .putIfAbsent(dateOnly, () => [])
-                        .add(punchTime);
+                  // Group punch-in and punch-out records by date
+                  Map<String, List<PunchInOutRecord>> groupedRecords = {};
+                  for (var record in user.punchInOutTime!) {
+                    String dateKey =
+                        '${record.punchIn.day}/${record.punchIn.month}/${record.punchIn.year}';
+                    if (!groupedRecords.containsKey(dateKey)) {
+                      groupedRecords[dateKey] = [];
+                    }
+                    groupedRecords[dateKey]!.add(record);
                   }
 
                   return pw.Column(
@@ -488,26 +579,42 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                       ),
                       pw.SizedBox(height: 10),
 
-                      // Display punch-in/out times in a table with fixed first column size
-                      pw.Table.fromTextArray(
-                        context: context,
-                        columnWidths: {
-                          0: const pw.FixedColumnWidth(
-                              100), // Fixed width for the first column
-                        },
-                        data: <List<String>>[
-                          <String>['Date', 'Punch In/Out Times'],
-                          ...punchTimesByDate.entries.map((entry) {
-                            String date =
-                                '${entry.key.day}/${entry.key.month}/${entry.key.year}';
-                            String punchTimes = entry.value
-                                .map((time) => timeFormat
-                                    .format(time)) // Convert to AM/PM format
-                                .join(', ');
-                            return [date, punchTimes];
-                          }),
-                        ],
-                      ),
+                      // Display punch-in and punch-out times in a table
+                      ...groupedRecords.entries.map((entry) {
+                        String date = entry.key;
+                        List<PunchInOutRecord> records = entry.value;
+
+                        return pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(date,
+                                style: pw.TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: pw.FontWeight.bold)),
+                            pw.Table.fromTextArray(
+                              context: context,
+                              columnWidths: {
+                                0: const pw
+                                    .FlexColumnWidth(), // Dynamic width for punch-in
+                                1: const pw
+                                    .FlexColumnWidth(), // Dynamic width for punch-out
+                              },
+                              data: <List<String>>[
+                                <String>['Punch In', 'Punch Out'],
+                                ...records.map((record) {
+                                  String punchInTime =
+                                      timeFormat.format(record.punchIn);
+                                  String punchOutTime = record.punchOut != null
+                                      ? timeFormat.format(record.punchOut!)
+                                      : 'No Punch Out'; // Show 'No Punch Out' if null
+                                  return [punchInTime, punchOutTime];
+                                }),
+                              ],
+                            ),
+                            pw.SizedBox(height: 20), // Space between dates
+                          ],
+                        );
+                      }),
                       pw.SizedBox(height: 20), // Space between users
                     ],
                   );
@@ -537,7 +644,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     if (status.isGranted) {
       var path = await ExternalPath.getExternalStoragePublicDirectory(
           ExternalPath.DIRECTORY_DOWNLOADS);
-
       final sanitizedFileName = DateTime.now().toString().replaceAll(':', '-');
       final filePath = "$path/punch_in_out_report_$sanitizedFileName.pdf";
       final file = File(filePath);

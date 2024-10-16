@@ -1,4 +1,5 @@
 import 'package:attandence_system/domain/account/account.dart';
+import 'package:attandence_system/infrastructure/punch_in_out/punch_in_out_entity.dart';
 import 'package:hive/hive.dart';
 part 'account_entity.g.dart';
 
@@ -20,7 +21,7 @@ class AccountEntity extends HiveObject {
   final String? designation;
 
   @HiveField(7)
-  final List<DateTime>? punchInOutTime;
+  final List<PunchInOutRecord>? punchInOutTime;
 
   @HiveField(8)
   final List<double>? predictedData; // New field for storing face data

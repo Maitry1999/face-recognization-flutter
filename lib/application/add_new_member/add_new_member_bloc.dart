@@ -2,6 +2,8 @@ import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/auth/account_failure.dart';
 import 'package:attandence_system/domain/auth/auth_value_objects.dart';
 import 'package:attandence_system/domain/auth/i_auth_facade.dart';
+import 'package:attandence_system/presentation/core/app_router.gr.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -38,20 +40,27 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
                   authFailureOrSuccessOption: none(),
                 ),
               );
-
-              failureOrSuccess = await _authFacade.registerUserData(
-                Account(
-                  userId: Uuid().v1(),
-                  countryCode: state.selectedCountrycode,
-                  designation: state.designation.getOrCrash(),
-                  email: state.emailAddress.getOrCrash(),
-                  firstName: state.firstName.getOrCrash(),
-                  lastName: state.lastName.getOrCrash(),
-                  phone: int.tryParse(state.mobileNumber.getOrCrash()),
-                  predictedData: e.embeddings,
-                  isAdmin: state.isAdmin,
+              var res = await e.context.router.push<List<double>>(
+                PageRouteInfo(
+                  FaceDetectorView.name,
+                  args: FaceDetectorViewArgs(isUserRegistring: true),
                 ),
               );
+              if (res != null) {
+                failureOrSuccess = await _authFacade.registerUserData(
+                  Account(
+                    userId: Uuid().v1(),
+                    countryCode: state.selectedCountrycode,
+                    designation: state.designation.getOrCrash(),
+                    email: state.emailAddress.getOrCrash(),
+                    firstName: state.firstName.getOrCrash(),
+                    lastName: state.lastName.getOrCrash(),
+                    phone: int.tryParse(state.mobileNumber.getOrCrash()),
+                    predictedData: res,
+                    isAdmin: state.isAdmin,
+                  ),
+                );
+              }
             }
 
             emit(

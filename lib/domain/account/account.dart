@@ -1,3 +1,4 @@
+import 'package:attandence_system/infrastructure/punch_in_out/punch_in_out_entity.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 part 'account.freezed.dart';
 
@@ -13,7 +14,7 @@ class Account with _$Account {
     String? countryCode,
     String? designation,
     int? phone,
-    List<DateTime>? punchInOutTime,
+    List<PunchInOutRecord>? punchInOutTime,
     bool? isAdmin,
     List<double>? predictedData,
   }) = _Account;

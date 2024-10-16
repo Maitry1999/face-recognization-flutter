@@ -6,7 +6,6 @@ import 'package:attandence_system/presentation/common/utils/flushbar_creator.dar
 import 'package:attandence_system/presentation/common/widgets/common_country_code_picker.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_appbar.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_text_field.dart';
-import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:attandence_system/presentation/core/buttons/common_button.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -73,17 +72,9 @@ class AddMemberView extends StatelessWidget {
                     CommonButton(
                       isSubmitting: state.isSubmitting,
                       onPressed: () async {
-                        var res = await context.router.push<List<double>>(
-                          PageRouteInfo(
-                            FaceDetectorView.name,
-                            args: FaceDetectorViewArgs(isUserRegistring: true),
-                          ),
-                        );
-
-                        if (res != null) {
-                          context.read<AddNewMemberBloc>().add(
-                              AddNewMemberEvent.addNewMember(context, res));
-                        }
+                        context
+                            .read<AddNewMemberBloc>()
+                            .add(AddNewMemberEvent.addNewMember(context));
                       },
                       buttonText: 'Add',
                     ),

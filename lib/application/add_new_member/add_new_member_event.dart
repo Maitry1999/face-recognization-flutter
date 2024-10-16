@@ -2,8 +2,8 @@ part of 'add_new_member_bloc.dart';
 
 @freezed
 class AddNewMemberEvent with _$AddNewMemberEvent {
-  const factory AddNewMemberEvent.addNewMember(
-      BuildContext context, List<double> embeddings) = AddNewMember;
+  const factory AddNewMemberEvent.addNewMember(BuildContext context) =
+      AddNewMember;
   const factory AddNewMemberEvent.emailChanged(String email) = EmailChanged;
 
   const factory AddNewMemberEvent.getPrefilledPhoneNumber(
