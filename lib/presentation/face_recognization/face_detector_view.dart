@@ -42,7 +42,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   CustomPainter? painter;
   CameraLensDirection _direction = CameraLensDirection.front;
   dynamic data = {};
-  double threshold = 1;
+  double threshold = 0.8;
   Directory? tempDir;
   List<double>? e1; // Specify that this list will hold doubles
   bool _faceFound = false;
@@ -100,19 +100,47 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           if (!mounted) {
             return;
           }
-
+// Define a threshold for how far the face can be from the center (in pixels)
+          final double centerThreshold = 50.0;
           _camera?.startImageStream((CameraImage image) {
             if (_isDetecting) return;
             _isDetecting = true;
             dynamic finalResult = Multimap<String, Face>();
 
             var isUserAdmin = false;
+            var detectedUserId = '';
+
+            var isUserFullCenterFaceDetected = false;
 
             detect(image, _getDetectionMethod(), rotation).then(
               (dynamic result) async {
                 _faceFound = result.isNotEmpty;
                 for (Face face in result) {
-                  if (_isFaceFullyDetected(face)) {
+                  double x = (face.boundingBox.left);
+                  double y = (face.boundingBox.top);
+                  double width = face.boundingBox.width;
+                  double height = face.boundingBox.height;
+
+                  // Calculate the center of the bounding box
+                  double faceCenterX = x + (width / 2);
+                  double faceCenterY = y + (height / 2);
+
+                  // Get the center of the camera preview
+                  Size imageSize = Size(
+                    _camera!.value.previewSize!.height,
+                    _camera!.value.previewSize!.width,
+                  );
+                  double previewCenterX = imageSize.width / 2;
+                  double previewCenterY = imageSize.height / 2;
+
+                  // Check if the face is centered
+                  if (faceCenterX < (previewCenterX - centerThreshold) ||
+                      faceCenterX > (previewCenterX + centerThreshold) ||
+                      faceCenterY < (previewCenterY - centerThreshold) ||
+                      faceCenterY > (previewCenterY + centerThreshold)) {
+                    isUserFullCenterFaceDetected = false;
+                    finalResult.add('Please place your face in center.', face);
+                  } else if (_isFaceFullyDetected(face) == null) {
                     double x, y, w, h;
                     x = (face.boundingBox.left - 10);
                     y = (face.boundingBox.top - 10);
@@ -125,23 +153,25 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                     croppedImage =
                         imglib.copyResizeCropSquare(croppedImage, 112);
                     var res = _recog(croppedImage);
+                    isUserFullCenterFaceDetected = true;
                     finalResult.add('${res.firstName} ${res.lastName}', face);
-                    setState(() {
-                      isUserAdmin = res.isAdmin ?? false;
-                      userId = res.userId ?? "";
-                    });
+                    // setState(() {
+                    isUserAdmin = res.isAdmin ?? false;
+                    detectedUserId = res.userId ?? "";
+                    // });
                   } else {
-                    setState(() {
-                      isFullEmployeeFaceDetected = false;
-                      finalResult.add('Please place your face properly.', face);
-                    });
+                    isUserFullCenterFaceDetected = false;
+                    // setState(() {
+                    //   isFullEmployeeFaceDetected = false;
+                    finalResult.add(_isFaceFullyDetected(face), face);
+                    // });
                   }
                 }
                 setState(() {
                   _scanResults = finalResult;
                   isDownloadTapped = isUserAdmin;
-
-                  isFullEmployeeFaceDetected = true;
+                  userId = detectedUserId;
+                  isFullEmployeeFaceDetected = isUserFullCenterFaceDetected;
                   _isDetecting = false;
                 });
               },
@@ -173,15 +203,27 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     return faceDetector.processImage;
   }
 
-  bool _isFaceFullyDetected(Face face) {
+  String? _isFaceFullyDetected(Face face) {
+    if (face.landmarks[FaceLandmarkType.leftEye] == null ||
+        face.leftEyeOpenProbability == null ||
+        face.leftEyeOpenProbability! < 0.5) {
+      return 'Your right eye is not detected properly.';
+    } else if (face.landmarks[FaceLandmarkType.rightEye] == null ||
+        face.rightEyeOpenProbability == null ||
+        face.rightEyeOpenProbability! < 0.5) {
+      return 'Your left eyw is not detected properly.';
+    } else if (face.contours[FaceContourType.face] == null) {
+      return 'Your face contours is not detected properly.';
+    }
+    return null;
     // Check for eyes, smile, and face contours
-    return face.landmarks[FaceLandmarkType.leftEye] != null &&
-        face.landmarks[FaceLandmarkType.rightEye] != null &&
-        face.leftEyeOpenProbability != null &&
-        face.leftEyeOpenProbability! > 0.5 && // Check if the left eye is open
-        face.rightEyeOpenProbability != null &&
-        face.rightEyeOpenProbability! > 0.5 && // Check if the right eye is open
-        face.contours[FaceContourType.face] != null;
+    // return face.landmarks[FaceLandmarkType.leftEye] != null &&
+    //     face.landmarks[FaceLandmarkType.rightEye] != null &&
+    //     face.leftEyeOpenProbability != null &&
+    //     face.leftEyeOpenProbability! > 0.5 && // Check if the left eye is open
+    //     face.rightEyeOpenProbability != null &&
+    //     face.rightEyeOpenProbability! > 0.5 && // Check if the right eye is open
+    //     face.contours[FaceContourType.face] != null;
   }
 
   Widget _buildResults() {
@@ -240,9 +282,16 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                           onPressed:
                               userId.isNotEmpty && !widget.forDownloadData
                                   ? () {
-                                      PunchINOutWidget().updatePunchInOutTime(
-                                          userId, context,
-                                          isPunchIn: true);
+                                      if (!isFullEmployeeFaceDetected) {
+                                        showError(
+                                                message:
+                                                    'Please place your face properly')
+                                            .show(context);
+                                      } else {
+                                        PunchINOutWidget().updatePunchInOutTime(
+                                            userId, context,
+                                            isPunchIn: true);
+                                      }
                                     }
                                   : () {},
                           buttonText: 'In',
@@ -261,9 +310,16 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                           onPressed:
                               userId.isNotEmpty && !widget.forDownloadData
                                   ? () {
-                                      PunchINOutWidget().updatePunchInOutTime(
-                                          userId, context,
-                                          isPunchIn: false);
+                                      if (!isFullEmployeeFaceDetected) {
+                                        showError(
+                                                message:
+                                                    'Please place your face properly')
+                                            .show(context);
+                                      } else {
+                                        PunchINOutWidget().updatePunchInOutTime(
+                                            userId, context,
+                                            isPunchIn: false);
+                                      }
                                     }
                                   : () {},
                           buttonText: 'Out',
@@ -345,7 +401,9 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
               backgroundColor: (_faceFound) ? null : Colors.grey,
               onPressed: () {
                 if (!isFullEmployeeFaceDetected) {
-                  showError(message: 'Please place your face properly.')
+                  showError(
+                          message:
+                              'Please place your face properly and it should be in center of screen')
                       .show(context);
                   return;
                 } else {
