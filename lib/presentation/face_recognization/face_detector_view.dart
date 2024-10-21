@@ -484,7 +484,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   Account _nearestNeighbor() {
     double minDist = double.maxFinite;
     Account label = Account(
-        firstName: widget.isUserRegistring ? "Click on + to add " : 'Not',
+        firstName: widget.isUserRegistring ? "Click on +  to add " : 'Not',
         lastName: widget.isUserRegistring ? "your face" : ' Recognized');
     for (var key in getCurrentUser()) {
       List<double>? e2 = key.predictedData;
