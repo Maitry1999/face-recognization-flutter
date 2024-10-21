@@ -124,7 +124,19 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                   // Calculate the center of the bounding box
                   double faceCenterX = x + (width / 2);
                   double faceCenterY = y + (height / 2);
+  Future<void> _toggleCameraDirection() async {
+    if (_direction == CameraLensDirection.back) {
+      _direction = CameraLensDirection.front;
+    } else {
+      _direction = CameraLensDirection.back;
+    }
 
+    setState(() {
+      _camera = null;
+    });
+
+    _initializeCamera();
+  }
                   // Get the center of the camera preview
                   Size imageSize = Size(
                     _camera!.value.previewSize!.height,
@@ -195,7 +207,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
         enableLandmarks: true,
         enableContours: true,
         enableClassification: true,
-        enableTracking: true,
         performanceMode: FaceDetectorMode.accurate,
       ),
     );
@@ -336,20 +347,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     }
   }
 
-  Future<void> _toggleCameraDirection() async {
-    if (_direction == CameraLensDirection.back) {
-      _direction = CameraLensDirection.front;
-    } else {
-      _direction = CameraLensDirection.back;
-    }
-
-    setState(() {
-      _camera = null;
-    });
-
-    _initializeCamera();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -372,18 +369,32 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                   await context.router
                       .push(
                     PageRouteInfo(
-                      SuccessScreen.name,
-                      args: SuccessScreenArgs(
-                          message:
-                              'Only admin can download report. Please contact your admin',
-                          showWarning: true),
+                      FaceVerificationTaskScreen.name,
+                      // args: SuccessScreenArgs(
+                      //     message:
+                      //         'Only admin can download report. Please contact your admin',
+                      //     showWarning: true),
                     ),
                   )
                       .then(
-                    (value) {
-                      context.router.popUntil(
-                        (route) => route.isFirst,
-                      );
+                    (value) async {
+                      if (value != null && value == true) {
+                        await context.router
+                            .push(
+                              PageRouteInfo(
+                                SuccessScreen.name,
+                                args: SuccessScreenArgs(
+                                    message:
+                                        'Only admin can download report. Please contact your admin',
+                                    showWarning: true),
+                              ),
+                            )
+                            .then(
+                              (value) => context.router.popUntil(
+                                (route) => route.isFirst,
+                              ),
+                            );
+                      }
                     },
                   );
                 }
@@ -417,13 +428,13 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           SizedBox(
             height: getSize(10),
           ),
-          FloatingActionButton(
-            onPressed: _toggleCameraDirection,
-            heroTag: null,
-            child: _direction == CameraLensDirection.back
-                ? const Icon(Icons.camera_front)
-                : const Icon(Icons.camera_rear),
-          ),
+          // FloatingActionButton(
+          //   onPressed: _toggleCameraDirection,
+          //   heroTag: null,
+          //   child: _direction == CameraLensDirection.back
+          //       ? const Icon(Icons.camera_front)
+          //       : const Icon(Icons.camera_rear),
+          // ),
         ],
       ),
     );
@@ -507,7 +518,18 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
 
         return;
       } else {
-        await context.router.maybePop(e1);
+        var res = await context.router.push(
+          PageRouteInfo(
+            FaceVerificationTaskScreen.name,
+            // args: SuccessScreenArgs(
+            //     message:
+            //         'Only admin can download report. Please contact your admin',
+            //     showWarning: true),
+          ),
+        );
+        if (res != null && res == true) {
+          await context.router.maybePop(e1);
+        }
       }
     }
   }

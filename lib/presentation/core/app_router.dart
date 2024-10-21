@@ -7,9 +7,9 @@ class AppRouter extends RootStackRouter {
   List<AutoRoute> get routes => [
         AutoRoute(page: SplashPage.page, initial: true),
         AutoRoute(page: AddMemberView.page),
-
         AutoRoute(page: FaceDetectorView.page),
         AutoRoute(page: DashboardView.page),
         AutoRoute(page: SuccessScreen.page),
+        AutoRoute(page: FaceVerificationTaskScreen.page),
       ];
 }
