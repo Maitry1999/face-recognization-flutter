@@ -78,8 +78,6 @@ class _FaceVerificationTaskScreenState
   // Generate a random task (e.g., open your mouth, raise eyebrows, etc.)
   String generateRandomTask() {
     List<String> tasks = [
-      'open your mouth',
-      'raise your eyebrows',
       'look up and down',
       'turn your head left',
       'turn your head right',
@@ -92,8 +90,9 @@ class _FaceVerificationTaskScreenState
     if (controller == null || !controller!.value.isInitialized) return;
 
     controller?.startImageStream((CameraImage image) async {
-      if (isTaskCompleted || isDetectionInProgress)
+      if (isTaskCompleted || isDetectionInProgress) {
         return; // Skip detection if task is completed or in progress
+      }
 
       isDetectionInProgress = true; // Mark detection as in progress
 
@@ -141,18 +140,18 @@ class _FaceVerificationTaskScreenState
     switch (randomTask) {
       case 'look up and down':
         return face.headEulerAngleX != null &&
-            (face.headEulerAngleX! < -15 || face.headEulerAngleX! > 15);
+            (face.headEulerAngleX! < -18 || face.headEulerAngleX! > 18);
       case 'turn your head left':
         return face.headEulerAngleY != null &&
-            face.headEulerAngleY! < -15; // Check head turning left
+            face.headEulerAngleY! < 18; // Check head turning left
       case 'turn your head right':
         return face.headEulerAngleY != null &&
-            face.headEulerAngleY! > 15; // Check head turning right
+            face.headEulerAngleY! > -18; // Check head turning right
       case 'blink rapidly':
         return face.leftEyeOpenProbability != null &&
             face.rightEyeOpenProbability != null &&
-            face.leftEyeOpenProbability! < 0.2 &&
-            face.rightEyeOpenProbability! < 0.2; // Rapid blink detection
+            face.leftEyeOpenProbability! < 0.5 &&
+            face.rightEyeOpenProbability! < 0.5; // Rapid blink detection
       default:
         return false;
     }
@@ -169,9 +168,11 @@ class _FaceVerificationTaskScreenState
           timer.cancel(); // Stop the timer when it reaches zero
           if (!isTaskCompleted) {
             print("Time is up. Task failed.");
-            showError(message: 'Task failed, try again!').show(context);
-            showSuccess(message: 'Task failed, try again!').show(context).then(
-                  (value) => context.router.maybePop(false),
+
+            showError(message: 'Task failed, try again!').show(context).then(
+                  (value) => context.router.popUntil(
+                    (route) => route.isFirst,
+                  ),
                 );
 
             return;

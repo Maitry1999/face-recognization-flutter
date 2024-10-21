@@ -40,7 +40,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   bool isFullEmployeeFaceDetected = false;
 
   CustomPainter? painter;
-  CameraLensDirection _direction = CameraLensDirection.front;
+  final CameraLensDirection _direction = CameraLensDirection.front;
   dynamic data = {};
   double threshold = 0.8;
   Directory? tempDir;
@@ -101,7 +101,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
             return;
           }
 // Define a threshold for how far the face can be from the center (in pixels)
-          final double centerThreshold = 50.0;
+          const double centerThreshold = 50.0;
           _camera?.startImageStream((CameraImage image) {
             if (_isDetecting) return;
             _isDetecting = true;
@@ -124,19 +124,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                   // Calculate the center of the bounding box
                   double faceCenterX = x + (width / 2);
                   double faceCenterY = y + (height / 2);
-  Future<void> _toggleCameraDirection() async {
-    if (_direction == CameraLensDirection.back) {
-      _direction = CameraLensDirection.front;
-    } else {
-      _direction = CameraLensDirection.back;
-    }
 
-    setState(() {
-      _camera = null;
-    });
-
-    _initializeCamera();
-  }
                   // Get the center of the camera preview
                   Size imageSize = Size(
                     _camera!.value.previewSize!.height,
@@ -290,21 +278,31 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                               (userId.isNotEmpty && !widget.forDownloadData)
                                   ? null
                                   : Colors.grey,
-                          onPressed:
-                              userId.isNotEmpty && !widget.forDownloadData
-                                  ? () {
-                                      if (!isFullEmployeeFaceDetected) {
-                                        showError(
-                                                message:
-                                                    'Please place your face properly')
-                                            .show(context);
-                                      } else {
-                                        PunchINOutWidget().updatePunchInOutTime(
-                                            userId, context,
-                                            isPunchIn: true);
-                                      }
+                          onPressed: userId.isNotEmpty &&
+                                  !widget.forDownloadData
+                              ? () async {
+                                  if (!isFullEmployeeFaceDetected) {
+                                    showError(
+                                            message:
+                                                'Please place your face properly')
+                                        .show(context);
+                                  } else {
+                                    var res = await context.router.push(
+                                      PageRouteInfo(
+                                        FaceVerificationTaskScreen.name,
+                                      ),
+                                    );
+
+                                    if (res != null && res == true) {
+                                      await PunchINOutWidget()
+                                          .updatePunchInOutTime(userId, context,
+                                              isPunchIn: true);
+                                    } else {
+                                      _initializeCamera();
                                     }
-                                  : () {},
+                                  }
+                                }
+                              : () {},
                           buttonText: 'In',
                         ),
                       ),
@@ -318,21 +316,33 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                               (userId.isNotEmpty && !widget.forDownloadData)
                                   ? null
                                   : Colors.grey,
-                          onPressed:
-                              userId.isNotEmpty && !widget.forDownloadData
-                                  ? () {
-                                      if (!isFullEmployeeFaceDetected) {
-                                        showError(
-                                                message:
-                                                    'Please place your face properly')
-                                            .show(context);
-                                      } else {
-                                        PunchINOutWidget().updatePunchInOutTime(
-                                            userId, context,
-                                            isPunchIn: false);
-                                      }
+                          onPressed: userId.isNotEmpty &&
+                                  !widget.forDownloadData
+                              ? () async {
+                                  if (!isFullEmployeeFaceDetected) {
+                                    showError(
+                                            message:
+                                                'Please place your face properly')
+                                        .show(context);
+                                  } else {
+                                    var res = await context.router.push(
+                                      PageRouteInfo(
+                                        FaceVerificationTaskScreen.name,
+                                      ),
+                                    );
+                                    if (res != null && res == true) {
+                                      await PunchINOutWidget()
+                                          .updatePunchInOutTime(userId, context,
+                                              isPunchIn: false)
+                                          .then(
+                                            (value) => _initializeCamera(),
+                                          );
+                                    } else {
+                                      _initializeCamera();
                                     }
-                                  : () {},
+                                  }
+                                }
+                              : () {},
                           buttonText: 'Out',
                         ),
                       ),
@@ -364,39 +374,32 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                       .show(context);
                   return;
                 } else if (isDownloadTapped) {
-                  PdfGenerateView().generateUserPunchInOutReport(context);
+                  var res = await context.router.push(
+                    PageRouteInfo(
+                      FaceVerificationTaskScreen.name,
+                    ),
+                  );
+                  if (res != null && res == true) {
+                    PdfGenerateView().generateUserPunchInOutReport(context);
+                  } else {
+                    _initializeCamera();
+                  }
                 } else {
                   await context.router
                       .push(
-                    PageRouteInfo(
-                      FaceVerificationTaskScreen.name,
-                      // args: SuccessScreenArgs(
-                      //     message:
-                      //         'Only admin can download report. Please contact your admin',
-                      //     showWarning: true),
-                    ),
-                  )
+                        PageRouteInfo(
+                          SuccessScreen.name,
+                          args: SuccessScreenArgs(
+                              message:
+                                  'Only admin can download report. Please contact your admin',
+                              showWarning: true),
+                        ),
+                      )
                       .then(
-                    (value) async {
-                      if (value != null && value == true) {
-                        await context.router
-                            .push(
-                              PageRouteInfo(
-                                SuccessScreen.name,
-                                args: SuccessScreenArgs(
-                                    message:
-                                        'Only admin can download report. Please contact your admin',
-                                    showWarning: true),
-                              ),
-                            )
-                            .then(
-                              (value) => context.router.popUntil(
-                                (route) => route.isFirst,
-                              ),
-                            );
-                      }
-                    },
-                  );
+                        (value) => context.router.popUntil(
+                          (route) => route.isFirst,
+                        ),
+                      );
                 }
               },
               heroTag: null,
@@ -485,7 +488,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
         lastName: widget.isUserRegistring ? "your face" : ' Recognized');
     for (var key in getCurrentUser()) {
       List<double>? e2 = key.predictedData;
-      double d = euclideanDistance(e1!, e2!);
+      double d = euclideanDistance(e1!, e2 ?? []);
       if (d < threshold && d < minDist) {
         minDist = d;
         label = key;

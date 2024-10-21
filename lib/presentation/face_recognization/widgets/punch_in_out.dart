@@ -46,7 +46,10 @@ class PunchINOutWidget extends StatelessWidget {
           showError(
                   message:
                       'Note: You have not punched out for your last session.')
-              .show(context);
+              .show(context)
+              .then(
+                (value) => context.router.popUntil((route) => route.isFirst),
+              );
           // Return early to avoid adding a new punch-in record
           return;
         }
@@ -66,7 +69,10 @@ class PunchINOutWidget extends StatelessWidget {
             showError(
                     message:
                         'Cannot punch out without a punch in. Please do punch in first.')
-                .show(context);
+                .show(context)
+                .then(
+                  (value) => context.router.popUntil((route) => route.isFirst),
+                );
             return;
           }
 
@@ -79,7 +85,9 @@ class PunchINOutWidget extends StatelessWidget {
           showError(
             message:
                 'Cannot punch out without a punch in record. Please do punch in first.',
-          ).show(context);
+          ).show(context).then(
+                (value) => context.router.popUntil((route) => route.isFirst),
+              );
           return;
         }
       }

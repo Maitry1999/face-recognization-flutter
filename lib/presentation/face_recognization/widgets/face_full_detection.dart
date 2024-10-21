@@ -63,9 +63,9 @@ class FaceFullDetection extends StatelessWidget {
     double? angleZ = face.headEulerAngleZ;
 
     // Allow some tolerance for natural tilt, e.g., ±15 degrees
-    bool isPositionedWell = (angleX != null && angleX.abs() < 15) &&
-        (angleY != null && angleY.abs() < 15) &&
-        (angleZ != null && angleZ.abs() < 15);
+    bool isPositionedWell = ((angleX?.abs() ?? 0) < 15) &&
+        ((angleY?.abs() ?? 0) < 15) &&
+        ((angleZ?.abs() ?? 0) < 15);
 
     return isPositionedWell;
   }
