@@ -152,6 +152,7 @@ class _FaceVerificationTaskScreenState
             face.rightEyeOpenProbability != null &&
             face.leftEyeOpenProbability! < 0.5 &&
             face.rightEyeOpenProbability! < 0.5; // Rapid blink detection
+
       default:
         return false;
     }

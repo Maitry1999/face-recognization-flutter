@@ -27,6 +27,9 @@ class AccountEntity extends HiveObject {
   final List<double>? predictedData; // New field for storing face data
   @HiveField(9)
   final bool? isAdmin; // New field for storing face data
+
+  @HiveField(10)
+  final bool? isPunchIn; // New field for storing face data
   AccountEntity(
     this.userId,
     this.firstName,
@@ -38,6 +41,7 @@ class AccountEntity extends HiveObject {
     this.punchInOutTime,
     this.predictedData,
     this.isAdmin,
+    this.isPunchIn,
   );
 
   Account toDomain() {
@@ -52,6 +56,7 @@ class AccountEntity extends HiveObject {
       punchInOutTime: punchInOutTime,
       predictedData: predictedData,
       isAdmin: isAdmin,
+      isPunchIn: isPunchIn,
     );
   }
 
@@ -67,6 +72,7 @@ class AccountEntity extends HiveObject {
       account.punchInOutTime,
       account.predictedData,
       account.isAdmin,
+      account.isPunchIn,
     );
   }
 }

@@ -42,7 +42,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   CustomPainter? painter;
   final CameraLensDirection _direction = CameraLensDirection.front;
   dynamic data = {};
-  double threshold = 0.8;
+  double threshold = 1.0;
   Directory? tempDir;
   List<double>? e1; // Specify that this list will hold doubles
   bool _faceFound = false;
@@ -127,8 +127,8 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
 
                   // Get the center of the camera preview
                   Size imageSize = Size(
-                    _camera!.value.previewSize!.height,
                     _camera!.value.previewSize!.width,
+                    _camera!.value.previewSize!.height,
                   );
                   double previewCenterX = imageSize.width / 2;
                   double previewCenterY = imageSize.height / 2;
@@ -158,6 +158,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                     // setState(() {
                     isUserAdmin = res.isAdmin ?? false;
                     detectedUserId = res.userId ?? "";
+                    _handlePunchInOut(res, detectedUserId);
                     // });
                   } else {
                     isUserFullCenterFaceDetected = false;
@@ -200,6 +201,24 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     );
 
     return faceDetector.processImage;
+  }
+
+  Future<void> _handlePunchInOut(Account detectedAccount, String userId) async {
+    var res = await context.router.push(
+      PageRouteInfo(
+        FaceVerificationTaskScreen.name,
+      ),
+    );
+
+    if (res != null && res == true) {
+      // Automatically punch in or punch out based on some condition
+      // For example, if the user is already punched in, punch them out, else punch them in
+      await PunchINOutWidget().updatePunchInOutTime(
+        userId,
+        context,
+        isPunchIn: detectedAccount.isPunchIn != true,
+      );
+    }
   }
 
   String? _isFaceFullyDetected(Face face) {
@@ -260,97 +279,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           children: <Widget>[
             CameraPreview(_camera!),
             _buildResults(),
-            Positioned.fill(
-              bottom: getSize(80),
-              left: getSize(20),
-              right: getSize(20),
-              child: Visibility(
-                visible: !widget.forDownloadData,
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Visibility(
-                        visible: !widget.isUserRegistring,
-                        child: CommonButton(
-                          backgroundColor:
-                              (userId.isNotEmpty && !widget.forDownloadData)
-                                  ? null
-                                  : Colors.grey,
-                          onPressed: userId.isNotEmpty &&
-                                  !widget.forDownloadData
-                              ? () async {
-                                  if (!isFullEmployeeFaceDetected) {
-                                    showError(
-                                            message:
-                                                'Please place your face properly')
-                                        .show(context);
-                                  } else {
-                                    var res = await context.router.push(
-                                      PageRouteInfo(
-                                        FaceVerificationTaskScreen.name,
-                                      ),
-                                    );
-
-                                    if (res != null && res == true) {
-                                      await PunchINOutWidget()
-                                          .updatePunchInOutTime(userId, context,
-                                              isPunchIn: true);
-                                    } else {
-                                      _initializeCamera();
-                                    }
-                                  }
-                                }
-                              : () {},
-                          buttonText: 'In',
-                        ),
-                      ),
-                      SizedBox(
-                        height: getSize(10),
-                      ),
-                      Visibility(
-                        visible: !widget.isUserRegistring,
-                        child: CommonButton(
-                          backgroundColor:
-                              (userId.isNotEmpty && !widget.forDownloadData)
-                                  ? null
-                                  : Colors.grey,
-                          onPressed: userId.isNotEmpty &&
-                                  !widget.forDownloadData
-                              ? () async {
-                                  if (!isFullEmployeeFaceDetected) {
-                                    showError(
-                                            message:
-                                                'Please place your face properly')
-                                        .show(context);
-                                  } else {
-                                    var res = await context.router.push(
-                                      PageRouteInfo(
-                                        FaceVerificationTaskScreen.name,
-                                      ),
-                                    );
-                                    if (res != null && res == true) {
-                                      await PunchINOutWidget()
-                                          .updatePunchInOutTime(userId, context,
-                                              isPunchIn: false)
-                                          .then(
-                                            (value) => _initializeCamera(),
-                                          );
-                                    } else {
-                                      _initializeCamera();
-                                    }
-                                  }
-                                }
-                              : () {},
-                          buttonText: 'Out',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       );
@@ -484,7 +412,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   Account _nearestNeighbor() {
     double minDist = double.maxFinite;
     Account label = Account(
-        firstName: widget.isUserRegistring ? "Click on +  to add " : 'Not',
+        firstName: widget.isUserRegistring ? "Click on + to add " : 'Not',
         lastName: widget.isUserRegistring ? "your face" : ' Recognized');
     for (var key in getCurrentUser()) {
       List<double>? e2 = key.predictedData;

@@ -16,6 +16,7 @@ class Account with _$Account {
     int? phone,
     List<PunchInOutRecord>? punchInOutTime,
     bool? isAdmin,
+    bool? isPunchIn,
     List<double>? predictedData,
   }) = _Account;
 }

@@ -104,6 +104,7 @@ class PunchINOutWidget extends StatelessWidget {
         punchInOutRecords, // Updated punch in/out records
         existingUser.predictedData,
         existingUser.isAdmin,
+        isPunchIn,
       );
 
       // Save the updated user back to the Hive box
