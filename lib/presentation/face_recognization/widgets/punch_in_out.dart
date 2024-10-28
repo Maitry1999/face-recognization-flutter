@@ -2,9 +2,11 @@ import 'package:attandence_system/infrastructure/account/account_entity.dart';
 import 'package:attandence_system/infrastructure/core/network/hive_box_names.dart';
 import 'package:attandence_system/infrastructure/punch_in_out/punch_in_out_entity.dart';
 import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
-import 'package:attandence_system/presentation/core/app_router.gr.dart';
+import 'package:attandence_system/presentation/core/style/app_colors.dart';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:hive/hive.dart';
 import 'dart:developer' as dev;
 
@@ -22,8 +24,9 @@ class PunchINOutWidget extends StatelessWidget {
     var box = Hive.box<AccountEntity>(BoxNames.currentUser);
 
     // Find the index of the user
-    int userIndex =
-        box.values.toList().indexWhere((account) => account.userId == userId);
+    int userIndex = box.values
+        .toList()
+        .indexWhere((account) => account.enrollmentID == userId);
 
     // Check if the user exists
     if (userIndex != -1) {
@@ -94,7 +97,7 @@ class PunchINOutWidget extends StatelessWidget {
 
       // Create a new AccountEntity with the updated punch in/out records
       AccountEntity updatedUser = AccountEntity(
-        existingUser.userId,
+        existingUser.enrollmentID,
         existingUser.firstName,
         existingUser.lastName,
         existingUser.email,
@@ -105,24 +108,45 @@ class PunchINOutWidget extends StatelessWidget {
         existingUser.predictedData,
         existingUser.isAdmin,
         isPunchIn,
+        existingUser.isPunchInFromEverywhere,
       );
 
       // Save the updated user back to the Hive box
       await box.putAt(userIndex, updatedUser);
-
+      Fluttertoast.showToast(
+        msg:
+            'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for User ${existingUser.firstName} ${existingUser.lastName}',
+        backgroundColor: AppColors.black,
+        fontSize: 20,
+        textColor: AppColors.white,
+      ).then(
+        (value) => context.router.popUntil((route) => route.isFirst),
+      );
       // Log the update
-      dev.log(
-          'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for User ${existingUser.firstName} ${existingUser.lastName}: $punchInOutRecords');
+      // dev.log(
+      //     'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for User ${existingUser.firstName} ${existingUser.lastName}: $punchInOutRecords');
 
+      // return;
+      // return await Future.delayed(
+      //   Duration(seconds: 3),
+      //   () {
+      //     context.router.popUntil((route) => route.isFirst);
+      //   },
+      // );
       // Navigate to success screen
-      context.router
-          .push(PageRouteInfo(SuccessScreen.name,
-              args: SuccessScreenArgs(
-                  message:
-                      'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for Employee ${existingUser.firstName} ${existingUser.lastName}')))
-          .then((value) async {
-        context.router.popUntil((route) => route.isFirst);
-      });
+
+      // context.router
+      //     .push(
+      //   PageRouteInfo(
+      //     SuccessScreen.name,
+      //     args: SuccessScreenArgs(
+      //         message:
+      //             'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for Employee ${existingUser.firstName} ${existingUser.lastName}'),
+      //   ),
+      // )
+      //     .then((value) async {
+      //   context.router.popUntil((route) => route.isFirst);
+      // });
     } else {
       // Log if the user is not found
       dev.log('User with userId: $userId not found in Hive.');

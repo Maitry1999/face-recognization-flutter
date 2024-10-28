@@ -7,7 +7,7 @@ class Account with _$Account {
   const Account._();
 
   const factory Account({
-    String? userId,
+    String? enrollmentID,
     String? firstName,
     String? lastName,
     String? email,
@@ -17,6 +17,7 @@ class Account with _$Account {
     List<PunchInOutRecord>? punchInOutTime,
     bool? isAdmin,
     bool? isPunchIn,
+    bool? isPunchInFromEverywhere,
     List<double>? predictedData,
   }) = _Account;
 }

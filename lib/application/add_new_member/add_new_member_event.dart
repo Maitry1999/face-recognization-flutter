@@ -6,6 +6,9 @@ class AddNewMemberEvent with _$AddNewMemberEvent {
       AddNewMember;
   const factory AddNewMemberEvent.emailChanged(String email) = EmailChanged;
 
+  const factory AddNewMemberEvent.enrollmentIdChanged(String enrollmentId) =
+      EnrollmentIdChanged;
+
   const factory AddNewMemberEvent.getPrefilledPhoneNumber(
       String countryCode, String phoneNumber) = GetPrefilledPhoneNumber;
 
@@ -20,7 +23,13 @@ class AddNewMemberEvent with _$AddNewMemberEvent {
       DesignationChanged;
   const factory AddNewMemberEvent.selectCountryCode(String counryCode) =
       SelectCountryCode;
+  // New event for toggling between default and manual location
+  const factory AddNewMemberEvent.locationSelectionChanged(bool isDefault) =
+      _LocationSelectionChanged;
 
+  // New event for updating the manual location field
+  const factory AddNewMemberEvent.manualLocationChanged(String location) =
+      _ManualLocationChanged;
   const factory AddNewMemberEvent.isNewMemberAdmin(
       bool isAdmin, List<double> embeddings) = IsNewMemberAdmin;
 }

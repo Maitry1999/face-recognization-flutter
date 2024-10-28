@@ -3,10 +3,12 @@ import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/injection.dart';
 import 'package:attandence_system/presentation/common/utils/app_focus.dart';
 import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
+import 'package:attandence_system/presentation/common/widgets/base_text.dart';
 import 'package:attandence_system/presentation/common/widgets/common_country_code_picker.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_appbar.dart';
 import 'package:attandence_system/presentation/common/widgets/custom_text_field.dart';
 import 'package:attandence_system/presentation/core/buttons/common_button.dart';
+import 'package:attandence_system/presentation/core/style/app_colors.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +51,10 @@ class AddMemberView extends StatelessWidget {
                     SizedBox(
                       height: getSize(20),
                     ),
+                    enrollmentIdTextFieldView(context, state),
+                    SizedBox(
+                      height: getSize(20),
+                    ),
                     firstNameTextFieldView(context, state),
                     SizedBox(
                       height: getSize(20),
@@ -66,6 +72,12 @@ class AddMemberView extends StatelessWidget {
                       height: getSize(20),
                     ),
                     mobileNumberTextFieldView(context, state),
+                    SizedBox(
+                      height: getSize(20),
+                    ),
+                    locationSelectionView(
+                        context, state), // New location selection
+
                     SizedBox(
                       height: getSize(30),
                     ),
@@ -119,6 +131,74 @@ class AddMemberView extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+// Location selection view with radio buttons
+  Widget locationSelectionView(BuildContext context, AddNewMemberState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        BaseText(text: 'Location'),
+
+        // Option for Netsol IT Solutions Pvt. Ltd.
+        RadioListTile<bool>(
+          title: BaseText(text: 'Netsol IT Solutions Pvt. Ltd.'),
+          value: true,
+          groupValue: state.isDefaultLocation,
+          dense: true,
+          activeColor: AppColors.green,
+          contentPadding: EdgeInsets.zero,
+          visualDensity: VisualDensity(
+            vertical: VisualDensity.minimumDensity,
+            horizontal: VisualDensity.minimumDensity,
+          ),
+          onChanged: (value) {
+            context
+                .read<AddNewMemberBloc>()
+                .add(AddNewMemberEvent.locationSelectionChanged(true));
+          },
+        ),
+
+        // Option for Everywhere
+        RadioListTile<bool>(
+          title: BaseText(text: 'Everywhere'),
+          value: false,
+          dense: true,
+          activeColor: AppColors.green,
+          contentPadding: EdgeInsets.zero,
+          visualDensity: VisualDensity(
+            vertical: VisualDensity.minimumDensity,
+            horizontal: VisualDensity.minimumDensity,
+          ),
+          groupValue: state.isDefaultLocation,
+          onChanged: (value) {
+            context
+                .read<AddNewMemberBloc>()
+                .add(AddNewMemberEvent.locationSelectionChanged(false));
+          },
+        ),
+      ],
+    );
+  }
+
+  CustomTextField enrollmentIdTextFieldView(
+      BuildContext context, AddNewMemberState state) {
+    return CustomTextField(
+      labelText: 'Enrollment ID',
+      hintText: 'Enrollment ID',
+      keyboardType: TextInputType.number,
+      onChanged: (value) => context
+          .read<AddNewMemberBloc>()
+          .add(AddNewMemberEvent.enrollmentIdChanged(value)),
+      validator: (_, context) =>
+          context.read<AddNewMemberBloc>().state.enrollmentID.value.fold(
+                (f) => f.maybeMap(
+                  empty: (value) => 'Please enter enroll ID',
+                  orElse: () => null,
+                ),
+                (_) => null,
+              ),
     );
   }
 

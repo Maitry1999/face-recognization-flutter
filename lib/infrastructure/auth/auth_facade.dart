@@ -24,7 +24,7 @@ class AuthFacade implements IAuthFacade {
     log('isCurrentUserExist: ${doesCurrentUserExist()}');
     if (doesCurrentUserExist()) {
       log('getCurrentUser() : ${getCurrentUser().map(
-        (e) => e.punchInOutTime,
+        (e) => AccountEntity.fromDomain(e).toDomain(),
       )}');
     }
     // getCookie returns null as a String, so it has to be checked like this.

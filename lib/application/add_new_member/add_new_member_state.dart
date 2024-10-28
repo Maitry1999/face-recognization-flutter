@@ -7,11 +7,14 @@ class AddNewMemberState with _$AddNewMemberState {
     required Username firstName,
     required Username lastName,
     required InputEmptyOrNot designation,
+    required InputEmptyOrNot enrollmentID,
     required MobileNumber mobileNumber,
     required bool showErrorMessages,
     required bool isSubmitting,
     required String selectedCountrycode,
     required bool isAdmin,
+    required bool isDefaultLocation, // Tracks if default location is selected
+    required String manualLocation, // Holds manual location if selected
     required Option<Either<AuthFailure, Unit>> authFailureOrSuccessOption,
     required List<double> embeddings,
     Size? imageSize,
@@ -38,5 +41,8 @@ class AddNewMemberState with _$AddNewMemberState {
         initializing: false,
         saving: false,
         embeddings: [],
+        enrollmentID: InputEmptyOrNot(''),
+        isDefaultLocation: true,
+        manualLocation: 'Netsol IT Solutions Pvt. Ltd.',
       );
 }

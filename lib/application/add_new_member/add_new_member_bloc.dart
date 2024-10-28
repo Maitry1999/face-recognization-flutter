@@ -8,7 +8,6 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:uuid/uuid.dart';
 import 'package:injectable/injectable.dart';
 
 part 'add_new_member_state.dart';
@@ -29,11 +28,13 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
             final isFirstNameValid = state.firstName.isValid();
             final isLastNameValid = state.lastName.isValid();
             final isMobileNumberValid = state.mobileNumber.isValid();
+            final isEnrollmentIdValid = state.enrollmentID.isValid();
 
             if (isFirstNameValid &&
                 isLastNameValid &&
                 isMobileNumberValid &&
-                isEmailValid) {
+                isEmailValid &&
+                isEnrollmentIdValid) {
               emit(
                 state.copyWith(
                   isSubmitting: true,
@@ -49,15 +50,18 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
               if (res != null) {
                 failureOrSuccess = await _authFacade.registerUserData(
                   Account(
-                    userId: Uuid().v1(),
+                    enrollmentID: state.enrollmentID.getOrCrash(),
                     countryCode: state.selectedCountrycode,
                     designation: state.designation.getOrCrash(),
                     email: state.emailAddress.getOrCrash(),
                     firstName: state.firstName.getOrCrash(),
                     lastName: state.lastName.getOrCrash(),
+                    isPunchIn: false,
                     phone: int.tryParse(state.mobileNumber.getOrCrash()),
                     predictedData: res,
                     isAdmin: state.isAdmin,
+                    isPunchInFromEverywhere:
+                        state.manualLocation.contains('Everywhere'),
                   ),
                 );
               }
@@ -126,6 +130,30 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
               state.copyWith(
                 isAdmin: value.isAdmin,
                 embeddings: value.embeddings,
+              ),
+            );
+          },
+          enrollmentIdChanged: (EnrollmentIdChanged value) async {
+            emit(
+              state.copyWith(
+                enrollmentID: InputEmptyOrNot(value.enrollmentId),
+                authFailureOrSuccessOption: none(),
+              ),
+            );
+          },
+          locationSelectionChanged: (_LocationSelectionChanged value) async {
+            emit(
+              state.copyWith(
+                isDefaultLocation: value.isDefault,
+                authFailureOrSuccessOption: none(),
+              ),
+            );
+          },
+          manualLocationChanged: (_ManualLocationChanged value) async {
+            emit(
+              state.copyWith(
+                manualLocation: value.location,
+                authFailureOrSuccessOption: none(),
               ),
             );
           },

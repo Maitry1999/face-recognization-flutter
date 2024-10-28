@@ -6,7 +6,7 @@ part 'account_entity.g.dart';
 @HiveType(typeId: 0)
 class AccountEntity extends HiveObject {
   @HiveField(0)
-  final String? userId;
+  final String? enrollmentID;
   @HiveField(1)
   final String? firstName;
   @HiveField(2)
@@ -30,8 +30,10 @@ class AccountEntity extends HiveObject {
 
   @HiveField(10)
   final bool? isPunchIn; // New field for storing face data
+  @HiveField(11)
+  final bool? isPunchInFromEverywhere; // New field for storing face data
   AccountEntity(
-    this.userId,
+    this.enrollmentID,
     this.firstName,
     this.lastName,
     this.email,
@@ -42,11 +44,12 @@ class AccountEntity extends HiveObject {
     this.predictedData,
     this.isAdmin,
     this.isPunchIn,
+    this.isPunchInFromEverywhere,
   );
 
   Account toDomain() {
     return Account(
-      userId: userId,
+      enrollmentID: enrollmentID,
       firstName: firstName,
       lastName: lastName,
       email: email,
@@ -57,12 +60,13 @@ class AccountEntity extends HiveObject {
       predictedData: predictedData,
       isAdmin: isAdmin,
       isPunchIn: isPunchIn,
+      isPunchInFromEverywhere: isPunchInFromEverywhere,
     );
   }
 
   factory AccountEntity.fromDomain(Account account) {
     return AccountEntity(
-      account.userId,
+      account.enrollmentID,
       account.firstName,
       account.lastName,
       account.email,
@@ -73,6 +77,7 @@ class AccountEntity extends HiveObject {
       account.predictedData,
       account.isAdmin,
       account.isPunchIn,
+      account.isPunchInFromEverywhere,
     );
   }
 }

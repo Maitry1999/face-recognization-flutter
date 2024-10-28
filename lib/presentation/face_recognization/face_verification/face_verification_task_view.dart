@@ -185,7 +185,7 @@ class _FaceVerificationTaskScreenState
   }
 
   // Mark task as complete and move to next steps
-  void completeTask() {
+  completeTask() {
     if (_timer != null) {
       _timer?.cancel(); // Cancel the timer if task is completed within time
     }
@@ -195,11 +195,11 @@ class _FaceVerificationTaskScreenState
     });
 
     print('Task Completed');
-    showSuccess(message: 'Task Completed').show(context).then(
+    return showSuccess(message: 'Task Completed').show(context).then(
           (value) => context.router.maybePop(true),
         );
 
-    return;
+    //return;
   }
 
   @override

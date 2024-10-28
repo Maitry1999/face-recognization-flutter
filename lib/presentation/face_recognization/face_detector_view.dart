@@ -1,15 +1,17 @@
+import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
 import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
-import 'package:attandence_system/presentation/core/buttons/common_button.dart';
 import 'package:attandence_system/presentation/face_recognization/detector_painters.dart';
 import 'package:attandence_system/presentation/face_recognization/utils.dart';
 import 'package:attandence_system/presentation/face_recognization/widgets/generate_pdf_widget.dart';
 import 'package:attandence_system/presentation/face_recognization/widgets/punch_in_out.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:camera/camera.dart';
 
@@ -38,7 +40,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   bool _isDetecting = false;
   bool isCapture = false;
   bool isFullEmployeeFaceDetected = false;
-
+  late FaceDetector faceDetector;
   CustomPainter? painter;
   final CameraLensDirection _direction = CameraLensDirection.front;
   dynamic data = {};
@@ -49,12 +51,50 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   var userId = '';
   bool isDownloadTapped = false;
   bool isYourFaceInCeter = false;
-
+  bool canPunchIn = false;
   @override
   void initState() {
     SystemChrome.setPreferredOrientations(
         [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
     _initializeCamera();
+
+    final LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 100,
+    );
+
+    Geolocator.getPositionStream(locationSettings: locationSettings)
+        .listen((Position? position) async {
+      if (position != null) {
+        // Netsol IT Solutions Pvt. Ltd. coordinates
+        const double targetLatitude = 21.160159491776806;
+        const double targetLongitude = 72.8118574165545;
+        const double radiusInMeters = 500;
+
+        double distance = Geolocator.distanceBetween(
+          targetLatitude,
+          targetLongitude,
+          position.latitude,
+          position.longitude,
+        );
+        log('distance : $distance');
+        if (distance <= radiusInMeters) {
+          log('User is in radius');
+          // Enable punch-in actions
+          //  _canPunchIn = true;
+          setState(() {
+            canPunchIn = true;
+          });
+        } else {
+          log('User is not in radius');
+          setState(() {
+            canPunchIn = false;
+          });
+          // Disable punch-in actions
+          // _canPunchIn = false;
+        }
+      }
+    });
     super.initState();
   }
 
@@ -111,7 +151,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
             var detectedUserId = '';
 
             var isUserFullCenterFaceDetected = false;
-
+            var account = Account();
             detect(image, _getDetectionMethod(), rotation).then(
               (dynamic result) async {
                 _faceFound = result.isNotEmpty;
@@ -157,8 +197,9 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                     finalResult.add('${res.firstName} ${res.lastName}', face);
                     // setState(() {
                     isUserAdmin = res.isAdmin ?? false;
-                    detectedUserId = res.userId ?? "";
-                    _handlePunchInOut(res, detectedUserId);
+                    detectedUserId = res.enrollmentID ?? "";
+                    account = res;
+
                     // });
                   } else {
                     isUserFullCenterFaceDetected = false;
@@ -168,13 +209,21 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                     // });
                   }
                 }
+
                 setState(() {
                   _scanResults = finalResult;
                   isDownloadTapped = isUserAdmin;
                   userId = detectedUserId;
                   isFullEmployeeFaceDetected = isUserFullCenterFaceDetected;
                   _isDetecting = false;
+                  // canPunchIn = account.isPunchInFromEverywhere ?? false;
                 });
+                if (userId.isNotEmpty &&
+                    _scanResults != null &&
+                    (!widget.isUserRegistring) &&
+                    (!widget.forDownloadData)) {
+                  _handlePunchInOut(account, userId);
+                }
               },
             ).catchError(
               (e) {
@@ -191,7 +240,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   }
 
   HandleDetection _getDetectionMethod() {
-    final faceDetector = FaceDetector(
+    faceDetector = FaceDetector(
       options: FaceDetectorOptions(
         enableLandmarks: true,
         enableContours: true,
@@ -204,20 +253,47 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   }
 
   Future<void> _handlePunchInOut(Account detectedAccount, String userId) async {
-    var res = await context.router.push(
-      PageRouteInfo(
-        FaceVerificationTaskScreen.name,
-      ),
-    );
+    setState(() {
+      _camera = null;
+      faceDetector.close();
+      _camera?.stopImageStream();
+      _camera?.dispose();
+    });
+    if (canPunchIn || detectedAccount.isPunchInFromEverywhere == true) {
+      // Cancel any existing timer before starting a new one
+      // _debounceTimer?.cancel();
 
-    if (res != null && res == true) {
-      // Automatically punch in or punch out based on some condition
-      // For example, if the user is already punched in, punch them out, else punch them in
-      await PunchINOutWidget().updatePunchInOutTime(
-        userId,
-        context,
-        isPunchIn: detectedAccount.isPunchIn != true,
-      );
+      // Start a new timer for debouncing
+
+      // Check if the user is already punched in or not, and update accordingly
+      if (detectedAccount.isPunchIn == true) {
+        await PunchINOutWidget().updatePunchInOutTime(
+          userId,
+          context,
+          isPunchIn: false, // Punching out
+        );
+      } else {
+        await PunchINOutWidget().updatePunchInOutTime(
+          userId,
+          context,
+          isPunchIn: true, // Punching in
+        );
+      }
+    } else {
+      showError(
+              message:
+                  'You are not allowed to punch in from this location.You can only punch in from Netsol IT Solutions Pvt. Ltd. office.')
+          .show(context)
+          .then(
+            (value) => context.router.popUntil(
+              (route) => route.isFirst,
+            ),
+          );
+      // setState(() {
+      //   _camera = null;
+      //   faceDetector.close();
+      //   _camera?.dispose();
+      // });
     }
   }
 
@@ -302,16 +378,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                       .show(context);
                   return;
                 } else if (isDownloadTapped) {
-                  var res = await context.router.push(
-                    PageRouteInfo(
-                      FaceVerificationTaskScreen.name,
-                    ),
-                  );
-                  if (res != null && res == true) {
-                    PdfGenerateView().generateUserPunchInOutReport(context);
-                  } else {
-                    _initializeCamera();
-                  }
+                  PdfGenerateView().generateUserPunchInOutReport(context);
                 } else {
                   await context.router
                       .push(
@@ -468,6 +535,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   @override
   void dispose() {
     _camera?.dispose();
+    faceDetector.close();
     super.dispose();
   }
 }
