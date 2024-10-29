@@ -18,7 +18,7 @@ class PunchINOutWidget extends StatelessWidget {
     return const Placeholder();
   }
 
-  Future<void> updatePunchInOutTime(String userId, BuildContext context,
+  Future<bool> updatePunchInOutTime(String userId, BuildContext context,
       {required bool isPunchIn}) async {
     // Open the Hive box
     var box = Hive.box<AccountEntity>(BoxNames.currentUser);
@@ -54,7 +54,7 @@ class PunchINOutWidget extends StatelessWidget {
                 (value) => context.router.popUntil((route) => route.isFirst),
               );
           // Return early to avoid adding a new punch-in record
-          return;
+          return false;
         }
         // Punch-In: Add a new entry for punch-in (start a new record)
         punchInOutRecords.add(
@@ -76,7 +76,7 @@ class PunchINOutWidget extends StatelessWidget {
                 .then(
                   (value) => context.router.popUntil((route) => route.isFirst),
                 );
-            return;
+            return false;
           }
 
           // Update the punch-out time to the current time
@@ -91,7 +91,7 @@ class PunchINOutWidget extends StatelessWidget {
           ).show(context).then(
                 (value) => context.router.popUntil((route) => route.isFirst),
               );
-          return;
+          return false;
         }
       }
 
@@ -120,7 +120,9 @@ class PunchINOutWidget extends StatelessWidget {
         fontSize: 20,
         textColor: AppColors.white,
       ).then(
-        (value) => context.router.popUntil((route) => route.isFirst),
+        (value) {
+          context.router.maybePop();
+        },
       );
       // Log the update
       // dev.log(
@@ -151,5 +153,7 @@ class PunchINOutWidget extends StatelessWidget {
       // Log if the user is not found
       dev.log('User with userId: $userId not found in Hive.');
     }
+
+    return false;
   }
 }

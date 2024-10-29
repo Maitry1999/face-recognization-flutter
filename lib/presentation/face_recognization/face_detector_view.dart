@@ -5,6 +5,7 @@ import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
 import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
+import 'package:attandence_system/presentation/common/widgets/base_text.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:attandence_system/presentation/face_recognization/detector_painters.dart';
 import 'package:attandence_system/presentation/face_recognization/utils.dart';
@@ -17,6 +18,7 @@ import 'package:camera/camera.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as imglib;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:tflite_flutter/tflite_flutter.dart' as tfl;
 import 'package:quiver/collection.dart';
 import 'package:flutter/services.dart';
@@ -40,62 +42,105 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   bool _isDetecting = false;
   bool isCapture = false;
   bool isFullEmployeeFaceDetected = false;
-  late FaceDetector faceDetector;
+  // FaceDetector? faceDetector;
   CustomPainter? painter;
   final CameraLensDirection _direction = CameraLensDirection.front;
   dynamic data = {};
   double threshold = 1.0;
   Directory? tempDir;
   List<double>? e1; // Specify that this list will hold doubles
-  bool _faceFound = false;
   var userId = '';
   bool isDownloadTapped = false;
   bool isYourFaceInCeter = false;
   bool canPunchIn = false;
+  bool detectingCurrentLocation = false;
+
   @override
   void initState() {
     SystemChrome.setPreferredOrientations(
         [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-    _initializeCamera();
+    if (widget.forDownloadData || widget.isUserRegistring) {
+      _initializeCamera();
+    } else {
+      _startLocationMonitoring();
+    }
 
-    final LocationSettings locationSettings = LocationSettings(
+    super.initState();
+  }
+
+  Future<void> _startLocationMonitoring() async {
+    setState(() {
+      detectingCurrentLocation = true;
+    });
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    // Check and request location permission
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      openAppSettings();
+      return Future.error(
+          'Location permissions are permanently denied, please enable them in settings.');
+    }
+
+    // Monitor location updates
+    final locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 100,
+      distanceFilter: 100, // Minimum distance to trigger updates
     );
 
-    Geolocator.getPositionStream(locationSettings: locationSettings)
-        .listen((Position? position) async {
+    Geolocator.getCurrentPosition(locationSettings: locationSettings)
+        .then((Position? position) {
       if (position != null) {
-        // Netsol IT Solutions Pvt. Ltd. coordinates
-        const double targetLatitude = 21.160159491776806;
-        const double targetLongitude = 72.8118574165545;
-        const double radiusInMeters = 500;
-
-        double distance = Geolocator.distanceBetween(
-          targetLatitude,
-          targetLongitude,
-          position.latitude,
-          position.longitude,
-        );
-        log('distance : $distance');
-        if (distance <= radiusInMeters) {
-          log('User is in radius');
-          // Enable punch-in actions
-          //  _canPunchIn = true;
-          setState(() {
-            canPunchIn = true;
-          });
-        } else {
-          log('User is not in radius');
-          setState(() {
-            canPunchIn = false;
-          });
-          // Disable punch-in actions
-          // _canPunchIn = false;
-        }
+        _checkProximity(position);
       }
     });
-    super.initState();
+  }
+
+  void _checkProximity(Position position) {
+    // Netsol IT Solutions Pvt. Ltd. coordinates
+    const double targetLatitude = 21.160159491776806;
+    const double targetLongitude = 72.8118574165545;
+    const double radiusInMeters = 500;
+
+    double distance = Geolocator.distanceBetween(
+      targetLatitude,
+      targetLongitude,
+      position.latitude,
+      position.longitude,
+    );
+
+    log('Distance: $distance meters');
+
+    if (distance <= radiusInMeters) {
+      log('User is within radius');
+      setState(() {
+        canPunchIn = true;
+      });
+    } else {
+      log('User is outside the radius');
+      setState(() {
+        canPunchIn = false;
+      });
+    }
+
+    setState(() {
+      detectingCurrentLocation = false;
+    });
+    _initializeCamera();
   }
 
   Future<void> loadModel() async {
@@ -154,7 +199,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
             var account = Account();
             detect(image, _getDetectionMethod(), rotation).then(
               (dynamic result) async {
-                _faceFound = result.isNotEmpty;
                 for (Face face in result) {
                   double x = (face.boundingBox.left);
                   double y = (face.boundingBox.top);
@@ -223,6 +267,8 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                     (!widget.isUserRegistring) &&
                     (!widget.forDownloadData)) {
                   _handlePunchInOut(account, userId);
+                } else if (widget.isUserRegistring) {
+                  _addLabel();
                 }
               },
             ).catchError(
@@ -240,7 +286,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   }
 
   HandleDetection _getDetectionMethod() {
-    faceDetector = FaceDetector(
+    var faceDetector = FaceDetector(
       options: FaceDetectorOptions(
         enableLandmarks: true,
         enableContours: true,
@@ -253,12 +299,6 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   }
 
   Future<void> _handlePunchInOut(Account detectedAccount, String userId) async {
-    setState(() {
-      _camera = null;
-      faceDetector.close();
-      _camera?.stopImageStream();
-      _camera?.dispose();
-    });
     if (canPunchIn || detectedAccount.isPunchInFromEverywhere == true) {
       // Cancel any existing timer before starting a new one
       // _debounceTimer?.cancel();
@@ -338,6 +378,11 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   }
 
   Widget _buildImage() {
+    if (detectingCurrentLocation) {
+      return Center(
+        child: BaseText(text: 'Detecting Location'),
+      );
+    }
     if (_camera == null || !(_camera!.value.isInitialized || isCapture)) {
       return Center(
         child: CircularProgressIndicator(),
@@ -404,25 +449,25 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
           SizedBox(
             height: getSize(10),
           ),
-          Visibility(
-            visible: widget.isUserRegistring,
-            child: FloatingActionButton(
-              backgroundColor: (_faceFound) ? null : Colors.grey,
-              onPressed: () {
-                if (!isFullEmployeeFaceDetected) {
-                  showError(
-                          message:
-                              'Please place your face properly and it should be in center of screen')
-                      .show(context);
-                  return;
-                } else {
-                  _addLabel();
-                }
-              },
-              heroTag: null,
-              child: Icon(Icons.add),
-            ),
-          ),
+          // Visibility(
+          //   visible: widget.isUserRegistring,
+          //   child: FloatingActionButton(
+          //     backgroundColor: (_faceFound) ? null : Colors.grey,
+          //     onPressed: () {
+          //       if (!isFullEmployeeFaceDetected) {
+          //         showError(
+          //                 message:
+          //                     'Please place your face properly and it should be in center of screen')
+          //             .show(context);
+          //         return;
+          //       } else {
+          //         _addLabel();
+          //       }
+          //     },
+          //     heroTag: null,
+          //     child: Icon(Icons.add),
+          //   ),
+          // ),
           SizedBox(
             height: getSize(10),
           ),
@@ -516,18 +561,18 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
 
         return;
       } else {
-        var res = await context.router.push(
-          PageRouteInfo(
-            FaceVerificationTaskScreen.name,
-            // args: SuccessScreenArgs(
-            //     message:
-            //         'Only admin can download report. Please contact your admin',
-            //     showWarning: true),
-          ),
-        );
-        if (res != null && res == true) {
-          await context.router.maybePop(e1);
-        }
+        // var res = await context.router.push(
+        //   PageRouteInfo(
+        //     FaceVerificationTaskScreen.name,
+        //     // args: SuccessScreenArgs(
+        //     //     message:
+        //     //         'Only admin can download report. Please contact your admin',
+        //     //     showWarning: true),
+        //   ),
+        // );
+        // if (res != null && res == true) {
+        await context.router.maybePop(e1);
+        // }
       }
     }
   }
@@ -535,7 +580,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   @override
   void dispose() {
     _camera?.dispose();
-    faceDetector.close();
+    //faceDetector?.close();
     super.dispose();
   }
 }

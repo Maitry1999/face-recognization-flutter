@@ -2,12 +2,16 @@ import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/auth/account_failure.dart';
 import 'package:attandence_system/domain/auth/auth_value_objects.dart';
 import 'package:attandence_system/domain/auth/i_auth_facade.dart';
+import 'package:attandence_system/infrastructure/account/account_entity.dart';
+import 'package:attandence_system/infrastructure/core/network/hive_box_names.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:collection/collection.dart';
+import 'package:hive/hive.dart';
 import 'package:injectable/injectable.dart';
 
 part 'add_new_member_state.dart';
@@ -35,18 +39,36 @@ class AddNewMemberBloc extends Bloc<AddNewMemberEvent, AddNewMemberState> {
                 isMobileNumberValid &&
                 isEmailValid &&
                 isEnrollmentIdValid) {
+              // Check if the enrollment ID already exists in local storage
+              final box =
+                  await Hive.openBox<AccountEntity>(BoxNames.currentUser);
+              final existingAccount = box.values.toList().firstWhereOrNull(
+                    (account) =>
+                        account.enrollmentID == state.enrollmentID.getOrCrash(),
+                  );
+
+              if (existingAccount != null) {
+                // Show error toast if enrollment ID already exists
+                ScaffoldMessenger.of(e.context).showSnackBar(
+                  SnackBar(content: Text('Enrollment ID already exists')),
+                );
+                return; // Exit the function early
+              }
+
               emit(
                 state.copyWith(
                   isSubmitting: true,
                   authFailureOrSuccessOption: none(),
                 ),
               );
+
               var res = await e.context.router.push<List<double>>(
                 PageRouteInfo(
                   FaceDetectorView.name,
                   args: FaceDetectorViewArgs(isUserRegistring: true),
                 ),
               );
+
               if (res != null) {
                 failureOrSuccess = await _authFacade.registerUserData(
                   Account(
