@@ -5,7 +5,6 @@ import 'package:attandence_system/domain/account/account.dart';
 import 'package:attandence_system/domain/core/math_utils.dart';
 import 'package:attandence_system/presentation/common/utils/flushbar_creator.dart';
 import 'package:attandence_system/presentation/common/utils/get_current_user.dart';
-import 'package:attandence_system/presentation/common/widgets/base_text.dart';
 import 'package:attandence_system/presentation/core/app_router.gr.dart';
 import 'package:attandence_system/presentation/face_recognization/detector_painters.dart';
 import 'package:attandence_system/presentation/face_recognization/utils.dart';
@@ -266,8 +265,14 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
                     _scanResults != null &&
                     (!widget.isUserRegistring) &&
                     (!widget.forDownloadData)) {
+                  setState(() {
+                    _camera?.stopImageStream();
+                  });
                   _handlePunchInOut(account, userId);
                 } else if (widget.isUserRegistring) {
+                  setState(() {
+                    _camera?.stopImageStream();
+                  });
                   _addLabel();
                 }
               },
@@ -345,7 +350,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
     } else if (face.landmarks[FaceLandmarkType.rightEye] == null ||
         face.rightEyeOpenProbability == null ||
         face.rightEyeOpenProbability! < 0.5) {
-      return 'Your left eyw is not detected properly.';
+      return 'Your left eye is not detected properly.';
     } else if (face.contours[FaceContourType.face] == null) {
       return 'Your face contours is not detected properly.';
     }
@@ -380,7 +385,7 @@ class _FaceDetectorViewState extends State<FaceDetectorView> {
   Widget _buildImage() {
     if (detectingCurrentLocation) {
       return Center(
-        child: BaseText(text: 'Detecting Location'),
+        child: CircularProgressIndicator(),
       );
     }
     if (_camera == null || !(_camera!.value.isInitialized || isCapture)) {

@@ -122,8 +122,10 @@ class PunchINOutWidget extends StatelessWidget {
       ).then(
         (value) {
           context.router.maybePop();
+          return true;
         },
       );
+
       // Log the update
       // dev.log(
       //     'Updated Punch ${isPunchIn ? 'In' : 'Out'} Time for User ${existingUser.firstName} ${existingUser.lastName}: $punchInOutRecords');
